@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "evomin.h"
 
 enum {
@@ -28,7 +29,7 @@ enum {
 
 static int8_t buffer_initialize(struct evoMin_Buffer* buffer, uint32_t size);
 static int8_t buffer_push(struct evoMin_Buffer* buffer, uint8_t byte);
-static int8_t buffer_pop(struct evoMin_Buffer* buffer);
+static struct evoMin_ResultState buffer_pop(struct evoMin_Buffer* buffer);
 static void initialize_frame(struct evoMin_Frame* frame);
 
 
@@ -66,7 +67,7 @@ evoMin_Handler_ByteRecvd(struct evoMin_Interface* interface, uint8_t* bytes, uin
 {
 	/* Number of bytes passed to the handler 
 	   is higher than the maximum defined payload size */
-	if(bLen > EVOMIN_MAX_PAYLOAD_SIZE)
+	if(bLen > EVOMIN_TRANSPORT_FRAME_SIZE)
 	{
 		interface->rxBuffer.status |= EVOMIN_BUF_STATUS_MASK_PTL;
 		return -1;
@@ -95,10 +96,10 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 	/* until SOF 0xAA 0xAA 0xAA found */
 	while(parseLoop != -1)
 	{
- 		int8_t cByteState = buffer_pop(&interface->rxBuffer);
+ 		struct evoMin_ResultState cByteState = buffer_pop(&interface->rxBuffer);
 		
-		if(cByteState != -1) {
-			cByte = cByteState;
+		if(cByteState.state == RESULT_STATE_OK ) {
+			cByte = cByteState.data;
 		}
 		else {
 			parseLoop = -1;
@@ -183,6 +184,15 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 				if(interface->currentFrameBytesReceived++ < interface->currentFrame->pLength)
 				{
 					int8_t copyState = buffer_push(&interface->pBuffer, cByte);
+
+					/* */
+					if(interface->pBuffer.status & EVOMIN_BUF_STATUS_MASK_OVR) {
+						interface->currentFrame->bOvr = 1;
+						printf("\nOverflow!!!\n");
+						/* Clear overflow */
+						interface->pBuffer.status &= ~EVOMIN_BUF_STATUS_MASK_OVR;
+					}
+
 					if(!copyState)
 					{
 						/* Could not copy the whole payload into the pBuffer, FAIL */
@@ -248,7 +258,24 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 uint8_t
 evoMin_FrameGetDataByte(struct evoMin_Interface* interface, struct evoMin_Frame* frame, uint8_t n)
 {
-	return interface->pBuffer.buffer[frame->pOffset + n];
+	uint8_t byte;
+
+	if(frame->pOffset + n >= interface->pBuffer.size - 1)
+	{
+		if(frame->bOvr != -1)
+		{
+			frame->bOvrOffset = n;
+			byte = interface->pBuffer.buffer[0];
+			frame->bOvr = -1;
+			return byte;
+		}
+		byte = interface->pBuffer.buffer[n - frame->bOvrOffset];
+	}
+	else {
+		byte = interface->pBuffer.buffer[frame->pOffset + n];
+	}
+
+	return byte;
 }
 
 /* Sends a frame (a frame to be sent over the low-level transport layer) from a command, a byte buffer and its length
@@ -370,7 +397,6 @@ buffer_push(struct evoMin_Buffer* buffer, uint8_t byte)
 	}
 
 	buffer->buffer[buffer->tailOffset] = byte;
-
 	buffer->tailOffset++;
 
 	return 1;
@@ -378,9 +404,11 @@ buffer_push(struct evoMin_Buffer* buffer, uint8_t byte)
 
 
 /* Get a byte from the buffer */
-static int8_t
+static struct evoMin_ResultState
 buffer_pop(struct evoMin_Buffer* buffer)
 {
+	struct evoMin_ResultState resultState;
+
 	/* If head reached the buffer end, 
 	   clear the OVR bit */
 	if(buffer->headOffset + 1 >= buffer->size)
@@ -392,13 +420,16 @@ buffer_pop(struct evoMin_Buffer* buffer)
 	if(buffer->headOffset > buffer->tailOffset)
 	{
 		buffer->headOffset = buffer->tailOffset;
-		return -1;
+		resultState.state = RESULT_STATE_ERROR;
+		return resultState;
 	}
 
 	int8_t byte = buffer->buffer[buffer->headOffset];
 	buffer->headOffset++;
 
-	return byte;
+	resultState.state = RESULT_STATE_OK;
+	resultState.data = byte;
+	return resultState;
 }
 
 static void

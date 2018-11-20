@@ -44,6 +44,9 @@ struct evoMin_Frame {
 	uint32_t pOffset;							// address offset for payload data
 	uint32_t pLength;							// payload length
 
+	int8_t bOvr;								// whether the buffer has overflowed in this frame
+	uint32_t bOvrOffset;
+
 	uint8_t crc8;
 };
 
@@ -85,6 +88,15 @@ struct evoMin_Interface {
 	#endif
 };
 
+enum evoMin_Result {
+	RESULT_STATE_OK,
+	RESULT_STATE_ERROR,
+};
+
+struct evoMin_ResultState {
+	uint8_t state;
+	uint8_t data;
+};
 
 void evoMin_Init(struct evoMin_Interface* interface);
 void evoMin_SetTXHandler(struct evoMin_Interface* interface, void (*evoMin_Handler_TX)(uint8_t byte));
