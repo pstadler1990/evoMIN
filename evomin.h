@@ -21,10 +21,10 @@
 #include <stdint.h>
 
 #define	EVOMIN_FRAME_SIZE 			(uint32_t)7	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 1 eof byte */
-#define EVOMIN_MAX_PAYLOAD_SIZE		(uint32_t)32
+#define EVOMIN_MAX_PAYLOAD_SIZE		(uint32_t)16
 #define EVOMIN_TRANSPORT_FRAME_SIZE (uint32_t)EVOMIN_FRAME_SIZE + EVOMIN_MAX_PAYLOAD_SIZE
-#define EVOMIN_RX_BUF_SIZE			(uint32_t)256
-#define EVOMIN_P_BUF_SIZE			(uint32_t)256
+#define EVOMIN_RX_BUF_SIZE			(uint32_t)32 //256
+#define EVOMIN_P_BUF_SIZE			(uint32_t)32 //256
 #define EVOMIN_MAX_FRAMES			(uint32_t)4
 
 
@@ -91,6 +91,7 @@ struct evoMin_Interface {
 enum evoMin_Result {
 	RESULT_STATE_OK,
 	RESULT_STATE_ERROR,
+	RESULT_STATE_OVR
 };
 
 struct evoMin_ResultState {

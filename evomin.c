@@ -188,7 +188,6 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 					/* */
 					if(interface->pBuffer.status & EVOMIN_BUF_STATUS_MASK_OVR) {
 						interface->currentFrame->bOvr = 1;
-						printf("\nOverflow!!!\n");
 						/* Clear overflow */
 						interface->pBuffer.status &= ~EVOMIN_BUF_STATUS_MASK_OVR;
 					}
@@ -260,6 +259,8 @@ evoMin_FrameGetDataByte(struct evoMin_Interface* interface, struct evoMin_Frame*
 {
 	uint8_t byte;
 
+	/* If an overflow occurs on the n-th byte offset,
+	   store n as the new offset from 0 and return the difference */
 	if(frame->pOffset + n >= interface->pBuffer.size - 1)
 	{
 		if(frame->bOvr != -1)
@@ -272,6 +273,7 @@ evoMin_FrameGetDataByte(struct evoMin_Interface* interface, struct evoMin_Frame*
 		byte = interface->pBuffer.buffer[n - frame->bOvrOffset];
 	}
 	else {
+		/* No overflow, return byte from buffer offset */
 		byte = interface->pBuffer.buffer[frame->pOffset + n];
 	}
 
@@ -376,7 +378,7 @@ buffer_push(struct evoMin_Buffer* buffer, uint8_t byte)
 	/* If there would be an overflow, 
 	   calculate the available bytes including the ones from the start of the buffer
        to see, if the data could fit in the buffer */
-	if(buffer->tailOffset + 1 >= buffer->size)
+	if(buffer->tailOffset >= buffer->size)
 	{
 		uint32_t availBytes = (buffer->size - buffer->tailOffset) + buffer->headOffset;
 		
@@ -411,18 +413,18 @@ buffer_pop(struct evoMin_Buffer* buffer)
 
 	/* If head reached the buffer end, 
 	   clear the OVR bit */
-	if(buffer->headOffset + 1 >= buffer->size)
+	if(buffer->headOffset >= buffer->size)
 	{
 		buffer->status &= ~EVOMIN_BUF_STATUS_MASK_OVR;
 		buffer->headOffset = 0;
 	}
 
-	if(buffer->headOffset > buffer->tailOffset)
-	{
-		buffer->headOffset = buffer->tailOffset;
-		resultState.state = RESULT_STATE_ERROR;
-		return resultState;
-	}
+	/* If the head offset is greater than the tail offset,
+	   an overflow has occured */
+	//if(buffer->headOffset > buffer->tailOffset) {
+	//	uint32_t dif = buffer->size - buffer->headOffset;
+	//	buffer->headOffset = buffer->size
+	//}
 
 	int8_t byte = buffer->buffer[buffer->headOffset];
 	buffer->headOffset++;
