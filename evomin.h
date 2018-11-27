@@ -35,8 +35,7 @@ enum evoMin_Command {
 };
 
 /* Status masks for the rx buffer
-   RXne TXne 0 0 OVR 0 0 INIT */
-#define EVOMIN_BUF_STATUS_MASK_OVR	0x08
+   RXne TXne 0 0 0 0 0 INIT */
 #define	EVOMIN_BUF_STATUS_MASK_INIT	0x01
 #define	EVOMIN_BUF_STATUS_MASK_NES	0x40	/* Not enough space error (if the required amount of data fits in the buffer, but is
 											   larger than the currently available space */

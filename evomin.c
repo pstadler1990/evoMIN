@@ -326,34 +326,13 @@ buffer_initialize(struct evoMin_Buffer* buffer, uint32_t size)
 static int8_t
 buffer_push(struct evoMin_Buffer* buffer, uint8_t byte)
 {
-	/* If there would be an overflow, 
-	   calculate the available bytes including the ones from the start of the buffer
-       to see, if the data could fit in the buffer */
-	if(buffer->tailOffset >= buffer->size)
+	if(buffer->tailOffset + 1 >= buffer->size)
 	{
-		uint32_t availBytes = (buffer->size - buffer->tailOffset) + buffer->headOffset;
-		
-		/* If there isn't at least one available byte from the current tail
-		   including an overflow, break */
-		if(availBytes == 0)
-		{
-			buffer->status |= EVOMIN_BUF_STATUS_MASK_NES;
-			return -1;
-		}
-		else
-		{
-			/* Buffer has overflowed, 
-		   	   set the OVR bit */
-			buffer->status |= EVOMIN_BUF_STATUS_MASK_OVR;
-
-			/* Override subsequent data */
-			buffer->tailOffset = 0;
-		}
+		buffer->status |= EVOMIN_BUF_STATUS_MASK_NES;
+		return -1;
 	}
 
-	buffer->buffer[buffer->tailOffset] = byte;
-	buffer->tailOffset++;
-
+	buffer->buffer[buffer->tailOffset++] = byte;
 	return 1;
 }
 
