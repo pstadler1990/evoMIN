@@ -21,27 +21,11 @@ int main()
 	{
 		uint32_t bufSize = payloadLength + EVOMIN_FRAME_SIZE;
 
-		evoMin_Handler_ByteRecvd(&comInterface, testData[f], bufSize);
-
-		printf("\nBuffer tail: %d, buffer head: %d\n", comInterface.rxBuffer.tailOffset, comInterface.rxBuffer.headOffset);
-
-		struct evoMin_Frame* frame = evoMin_getNextFrame(&comInterface);
-
-		/* Overflow should occur on this point */
-		//evoMin_Handler_ByteRecvd(&comInterface, testData1, EVOMIN_MAX_PAYLOAD_SIZE);
-
-		printf("Buffer data for frame %d\n", f);
-		printf("Command: 0x%X (%d)\n", frame->command, frame->command);
-		for(uint8_t i = 0; i<frame->pLength; i++)
+		for(uint32_t i=0; i < bufSize; i++)
 		{
-			uint8_t v = evoMin_FrameGetDataByte(&comInterface, frame, i);
-			printf("0x%X (%d)\n", v, v);
-		}
-
-		if(frame->buffer.size & EVOMIN_BUF_STATUS_MASK_OVR)
-		{
-			printf("\nBuffer override\n");
+			evoMin_RXHandler(&comInterface, testData[f][i]);
 		}
 	}
+
 	return 0;
 }

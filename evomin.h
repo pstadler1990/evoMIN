@@ -24,7 +24,7 @@
 #define EVOMIN_MAX_PAYLOAD_SIZE			(uint32_t)32
 #define EVOMIN_TRANSPORT_FRAME_SIZE 	(uint32_t)EVOMIN_FRAME_SIZE + EVOMIN_MAX_PAYLOAD_SIZE
 /* number of bytes the receive buffer can hold, = max. amount of data at once */
-#define EVOMIN_RX_BUF_SIZE				(uint32_t)32
+//#define EVOMIN_RX_BUF_SIZE				(uint32_t)32
 /* number of bytes a frame can hold as it's payload, = max. message size */
 #define EVOMIN_P_BUF_SIZE				(uint32_t)EVOMIN_MAX_PAYLOAD_SIZE
 /* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
@@ -69,7 +69,7 @@ struct evoMin_Frame {
 
 struct evoMin_Interface {
 
-	struct evoMin_Buffer rxBuffer;		// RX buffer for storing all incoming package data (commands, payloads, ...)
+	//struct evoMin_Buffer rxBuffer;		// RX buffer for storing all incoming package data (commands, payloads, ...)
 	//struct evoMin_Buffer pBuffer;		// Payload buffer containing only payload data for the current received frames
 	
 	struct evoMin_Frame* currentFrame;
@@ -101,12 +101,14 @@ struct evoMin_ResultState {
 
 void evoMin_Init(struct evoMin_Interface* interface);
 void evoMin_SetTXHandler(struct evoMin_Interface* interface, void (*evoMin_Handler_TX)(uint8_t byte));
-int8_t evoMin_Handler_ByteRecvd(struct evoMin_Interface* interface, uint8_t* bytes, uint32_t bLen);
+void evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte);
 uint8_t evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* bytes, uint32_t bLength);
 struct evoMin_Frame* evoMin_getNextFrame(struct evoMin_Interface* interface);
-uint8_t evoMin_FrameGetDataByte(struct evoMin_Interface* interface, struct evoMin_Frame* frame, uint8_t n);
+uint8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
 
 /* Application dependent CRC8 calculation, must be implemented! */
-uint8_t evoMin_CRC8(uint8_t* bytes, uint32_t bLen); 
+uint8_t evoMin_CRC8(uint8_t* bytes, uint32_t bLen);
+/* */
+void evoMin_Handler_FrameRecvd(struct evoMin_Frame* frame);
 
 #endif
