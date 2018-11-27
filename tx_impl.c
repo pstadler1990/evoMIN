@@ -4,8 +4,7 @@
 void 
 evoMin_comTXImplementation(uint8_t byte)
 {
-
-
+	printf("\nSend byte: %d (%X)", byte, byte);
 }
 
 
@@ -27,6 +26,6 @@ evoMin_Handler_FrameRecvd(struct evoMin_Frame* frame)
 	printf("\nFrame data: \n");
 	for(uint32_t i = 0; i<frame->pLength; i++)
 	{
-		printf("%d\n", evoMin_FrameGetDataByte(frame, i));
+		printf("%d (%X)\n", evoMin_FrameGetDataByte(frame, i),evoMin_FrameGetDataByte(frame, i));
 	}
 }

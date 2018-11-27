@@ -78,7 +78,7 @@ struct evoMin_Interface {
 
 	uint8_t currentFrameBytesReceived;
 	uint8_t lastRcvdByte;
-	uint8_t lastSendByte;
+	int8_t lastByteWasSTFBYT;
 
 	uint8_t state;
 

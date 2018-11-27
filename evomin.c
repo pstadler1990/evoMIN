@@ -38,7 +38,6 @@ void
 evoMin_Init(struct evoMin_Interface* interface)
 {
 	interface->state = EVOMIN_STATE_INIT;
-	interface->lastSendByte = -1;
 
 	memset(interface->receivedFrames, 0, EVOMIN_MAX_FRAMES * sizeof(struct evoMin_Frame));
 	interface->currentFrameOffset = 0;
@@ -118,8 +117,14 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte)
 
 			/* For the reception of a frame body if two 0xAA bytes in a row are received
 			   then the next received byte is discarded */
-			if(cByte == EVOMIN_FRAME_SOF && interface->lastRcvdByte == EVOMIN_FRAME_SOF) {
+			if(interface->lastByteWasSTFBYT == 1)
+			{
+				interface->lastByteWasSTFBYT = -1;
+				interface->lastRcvdByte = EVOMIN_FRAME_STFBYT;
 				return;
+			}
+			if(cByte == EVOMIN_FRAME_SOF && interface->lastRcvdByte == EVOMIN_FRAME_SOF) {
+				interface->lastByteWasSTFBYT = 1;
 			}
 
 			/* Store the payload data in the payload buffer */
@@ -222,6 +227,7 @@ evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* b
 	uint32_t pCnt = 0;
 	uint32_t crcCnt = 0;
 	uint32_t bytesToSend = bLength;
+	int8_t foundPlHeader = -1;
 
 	/* Send SOF bytes */
 	interface->evoMin_Handler_TX(EVOMIN_FRAME_SOF);
@@ -252,17 +258,23 @@ evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* b
 
 	for(uint32_t cCnt = 0; cCnt < bytesToSend && pCnt < EVOMIN_MAX_PAYLOAD_SIZE; cCnt++)
 	{
+		if(foundPlHeader == 1)
+		{
+			interface->evoMin_Handler_TX(EVOMIN_FRAME_STFBYT);
+			crcBuffer[++crcCnt] = EVOMIN_FRAME_STFBYT;
+			lastByte = EVOMIN_FRAME_STFBYT;
+
+			foundPlHeader = -1;
+		}
 		/* For the transmission of a frame body if two 0xAA bytes in a row are transmitted a stuff byte with value 0x55 
 	       is inserted into the transmitted byte stream */
 		if(bytes[cCnt] == EVOMIN_FRAME_SOF && lastByte == EVOMIN_FRAME_SOF)
 		{
-			nextByte = EVOMIN_FRAME_STFBYT;
-			crcBuffer[++crcCnt] = EVOMIN_FRAME_STFBYT;
+			foundPlHeader = 1;
 		}
-		else {
-			nextByte = bytes[cCnt];
-		}
-		
+
+		nextByte = bytes[cCnt];
+
 		crcBuffer[++crcCnt] = bytes[cCnt];
 		lastByte = bytes[cCnt];
 
