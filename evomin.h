@@ -29,7 +29,6 @@
 
 #define	EVOMIN_FRAME_SIZE 				(uint32_t)7	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 1 eof byte */
 #define EVOMIN_MAX_PAYLOAD_SIZE			(uint32_t)32
-#define EVOMIN_TRANSPORT_FRAME_SIZE 	(uint32_t)EVOMIN_FRAME_SIZE + EVOMIN_MAX_PAYLOAD_SIZE
 #define EVOMIN_P_BUF_SIZE				(uint32_t)EVOMIN_MAX_PAYLOAD_SIZE
 /* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
 #define EVOMIN_MAX_FRAMES				(uint32_t)4
@@ -90,7 +89,6 @@ struct evoMin_Interface {
 void evoMin_Init(struct evoMin_Interface* interface);
 void evoMin_SetTXHandler(struct evoMin_Interface* interface, void (*evoMin_Handler_TX)(uint8_t byte));
 uint8_t evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* bytes, uint32_t bLength);
-struct evoMin_Frame* evoMin_getNextFrame(struct evoMin_Interface* interface);
 uint8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
 
 /* -- Custom handlers, must be implemented on the application side -- */
