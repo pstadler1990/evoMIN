@@ -44,9 +44,6 @@ evoMin_Init(struct evoMin_Interface* interface)
 	/* Initialize the RX buffer */
 	buffer_initialize(&interface->rxBuffer, EVOMIN_RX_BUF_SIZE);
 
-	/* Initialize the payload buffer */
-	buffer_initialize(&interface->pBuffer, EVOMIN_P_BUF_SIZE);
-
 	memset(interface->receivedFrames, 0, EVOMIN_MAX_FRAMES * sizeof(struct evoMin_Frame));
 	interface->currentFrameOffset = 0;
 	interface->currentFrame = &interface->receivedFrames[interface->currentFrameOffset];
@@ -156,6 +153,7 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 
 				/* initialize the current frame */
 				initialize_frame(interface->currentFrame);
+
 				interface->currentFrameBytesReceived = 0;
 
 				interface->currentFrame->command = cByte;
@@ -164,12 +162,9 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 
 			case EVOMIN_STATE_LEN:
 
+				/* Store payload length in the current frame */
 				interface->currentFrame->pLength = cByte;
 				interface->state = EVOMIN_STATE_PAYLD;
-
-				/* Store the offset to the payload start in the pBuffer */
-				interface->currentFrame->pOffset = interface->pBuffer.tailOffset;
-
 				break;
 
 			case EVOMIN_STATE_PAYLD:
@@ -183,15 +178,13 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 				/* Store the payload data in the payload buffer */
 				if(interface->currentFrameBytesReceived++ < interface->currentFrame->pLength)
 				{
-					int8_t copyState = buffer_push(&interface->pBuffer, cByte);
+					int8_t copyState = buffer_push(&interface->currentFrame->buffer, cByte);
 
 					/* */
-					if(interface->pBuffer.status & EVOMIN_BUF_STATUS_MASK_OVR) {
-						interface->currentFrame->bOvr = 1;
-						/* Clear overflow */
-						interface->pBuffer.status &= ~EVOMIN_BUF_STATUS_MASK_OVR;
-					}
-
+					//if(interface->currentFrame->buffer.status & EVOMIN_BUF_STATUS_MASK_OVR) {
+					//	/* Clear overflow */
+					//	interface->pBuffer.status &= ~EVOMIN_BUF_STATUS_MASK_OVR;
+					//}
 					if(!copyState)
 					{
 						/* Could not copy the whole payload into the pBuffer, FAIL */
@@ -234,6 +227,7 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 				if(cByte == EVOMIN_FRAME_EOF)
 				{
 					interface->state = (interface->currentFrame->isValid) ? EVOMIN_STATE_IDLE : EVOMIN_STATE_ERROR;
+					interface->receivedFrames[interface->currentFrameOffset];
 					interface->currentFrameOffset++;
 				}
 				parseLoop = -1;
@@ -257,24 +251,14 @@ evoMin_getNextFrame(struct evoMin_Interface* interface)
 uint8_t
 evoMin_FrameGetDataByte(struct evoMin_Interface* interface, struct evoMin_Frame* frame, uint8_t n)
 {
-	uint8_t byte;
+	uint8_t byte = 0;
 
 	/* If an overflow occurs on the n-th byte offset,
 	   store n as the new offset from 0 and return the difference */
-	if(frame->pOffset + n >= interface->pBuffer.size - 1)
+	if(frame->buffer.headOffset + n < frame->buffer.size)
 	{
-		if(frame->bOvr != -1)
-		{
-			frame->bOvrOffset = n;
-			byte = interface->pBuffer.buffer[0];
-			frame->bOvr = -1;
-			return byte;
-		}
-		byte = interface->pBuffer.buffer[n - frame->bOvrOffset];
-	}
-	else {
 		/* No overflow, return byte from buffer offset */
-		byte = interface->pBuffer.buffer[frame->pOffset + n];
+		byte = frame->buffer.buffer[n];
 	}
 
 	return byte;
@@ -440,6 +424,9 @@ initialize_frame(struct evoMin_Frame* frame)
 	frame->isValid = -1;
 	frame->command = EVOMIN_CMD_RESERVED;
 	frame->pLength = 0;
-	frame->pOffset = 0;
+
+	/* Initialize the payload buffer */
+	buffer_initialize(&frame->buffer, EVOMIN_P_BUF_SIZE);
+
 	frame->crc8 = 0;
 }

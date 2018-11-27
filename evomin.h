@@ -20,13 +20,17 @@
 
 #include <stdint.h>
 
-#define	EVOMIN_FRAME_SIZE 			(uint32_t)7	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 1 eof byte */
-#define EVOMIN_MAX_PAYLOAD_SIZE		(uint32_t)16
-#define EVOMIN_TRANSPORT_FRAME_SIZE (uint32_t)EVOMIN_FRAME_SIZE + EVOMIN_MAX_PAYLOAD_SIZE
-#define EVOMIN_RX_BUF_SIZE			(uint32_t)32 //256
-#define EVOMIN_P_BUF_SIZE			(uint32_t)32 //256
-#define EVOMIN_MAX_FRAMES			(uint32_t)4
+#define	EVOMIN_FRAME_SIZE 				(uint32_t)7	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 1 eof byte */
+#define EVOMIN_MAX_PAYLOAD_SIZE			(uint32_t)64
+#define EVOMIN_TRANSPORT_FRAME_SIZE 	(uint32_t)EVOMIN_FRAME_SIZE + EVOMIN_MAX_PAYLOAD_SIZE
+/* number of bytes the receive buffer can hold, = max. amount of data at once */
+#define EVOMIN_RX_BUF_SIZE				(uint32_t)256
+/* number of bytes a frame can hold as it's payload, = max. message size */
+#define EVOMIN_P_BUF_SIZE				(uint32_t)EVOMIN_MAX_PAYLOAD_SIZE
+/* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
+#define EVOMIN_MAX_FRAMES				(uint32_t)4
 
+/* Total memory usage: EVOMIN_RX_BUF_SIZE + ((EVOMIN_MAX_FRAMES * EVOMIN_P_BUF_SIZE) + EVOMIN_FRAME_SIZE) */
 
 enum evoMin_Command {
 	EVOMIN_CMD_RESERVED = 0xFF,
@@ -35,26 +39,11 @@ enum evoMin_Command {
 	/* Add specific commands here */
 };
 
-/* Frames are the internal representation of a received packet, 
-   including the command, the payload offset and length and the crc8 */
-struct evoMin_Frame {
-	int8_t isValid;
-	uint8_t command;
-
-	uint32_t pOffset;							// address offset for payload data
-	uint32_t pLength;							// payload length
-
-	int8_t bOvr;								// whether the buffer has overflowed in this frame
-	uint32_t bOvrOffset;
-
-	uint8_t crc8;
-};
-
 /* Status masks for the rx buffer
    RXne TXne 0 0 OVR 0 0 INIT */
 #define EVOMIN_BUF_STATUS_MASK_OVR	0x08
 #define	EVOMIN_BUF_STATUS_MASK_INIT	0x01
-#define	EVOMIN_BUF_STATUS_MASK_NES	0x40	/* Not enough space error (if the required amount of data fits in the buffer, but is 
+#define	EVOMIN_BUF_STATUS_MASK_NES	0x40	/* Not enough space error (if the required amount of data fits in the buffer, but is
 											   larger than the currently available space */
 #define EVOMIN_BUF_STATUS_MASK_PTL	0x80	/* Payload too large (if the required amount of data is larger than the buffer) */
 
@@ -67,10 +56,22 @@ struct evoMin_Buffer {
 	uint8_t status;
 };
 
+/* Frames are the internal representation of a received packet, 
+   including the command, the payload offset and length and the crc8 */
+struct evoMin_Frame {
+	int8_t isValid;
+	uint8_t command;
+
+	struct evoMin_Buffer buffer;
+	uint8_t pLength;
+
+	uint8_t crc8;
+};
+
 struct evoMin_Interface {
 
 	struct evoMin_Buffer rxBuffer;		// RX buffer for storing all incoming package data (commands, payloads, ...)
-	struct evoMin_Buffer pBuffer;		// Payload buffer containing only payload data for the current received frames
+	//struct evoMin_Buffer pBuffer;		// Payload buffer containing only payload data for the current received frames
 	
 	struct evoMin_Frame* currentFrame;
 	struct evoMin_Frame receivedFrames[EVOMIN_MAX_FRAMES];
