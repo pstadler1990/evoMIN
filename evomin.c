@@ -110,6 +110,13 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte)
 
 			/* Store payload length in the current frame */
 			interface->currentFrame->pLength = cByte;
+
+			if(interface->currentFrame->pLength > EVOMIN_MAX_PAYLOAD_SIZE)
+			{
+				interface->currentFrame->buffer.status |= EVOMIN_BUF_STATUS_MASK_PTL;
+				goto error;
+			}
+
 			interface->state = EVOMIN_STATE_PAYLD;
 			break;
 
