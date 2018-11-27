@@ -39,6 +39,9 @@ int main()
 			0xDD
 	};
 
+	uint8_t crc8Test = evoMin_CRC8(sendBuffer, 9);
+	printf("\nCrc8 test: %d\n", crc8Test);
+
 	evoMin_sendFrame(&comInterface, EVOMIN_CMD_CHIP, sendBuffer, sendBufferLen);
 
 	uint32_t testBuffer2Len = 18;
@@ -59,7 +62,7 @@ int main()
 			 0xAA,
 			 0xCC,
 			 0xDD,
-			 0x8D,
+			 crc8Test,
 			0x55
 	};
 	uint32_t bufSize = testBuffer2Len + EVOMIN_FRAME_SIZE;

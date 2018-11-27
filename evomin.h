@@ -14,6 +14,13 @@
 
     Buffer status management:
     The buffer of each individual frame can be checked against overflows etc. Therefor, use the EVOMIN_BUF_STATUS_MASK_xxx masks
+
+    CRC8:
+    The checksum CRC8 is only calculated over the payload bytes EXCLUDING the stuff bytes and also EXCLUDING the frame header bytes,
+    but INCLUDING the command and the payload length byte!
+    0	 	command byte
+    1	 	payload length byte
+    2..n 	payload bytes
 */
 #ifndef __EVOMIN_H_
 #define __EVOMIN_H_

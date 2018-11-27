@@ -156,25 +156,20 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte)
 			interface->currentFrame->crc8 = cByte;
 
 			/* Check, if the transmitted crc8 equals the calculated one */
-			// TODO: Calculate crc8 on the whole frame (see the pack command)
-
-			//if(interface->currentFrame->crc8 == evoMin_CRC8(interface->currentFrame.pBuffer, interface->currentFrame.pLength)) {
+			if(interface->currentFrame->crc8 == evoMin_CRC8(interface->currentFrame->buffer.buffer, interface->currentFrame->pLength))
+			{
 				interface->currentFrame->isValid = 1;
 				interface->state = EVOMIN_STATE_EOF;
-			//}
-			//else {
-			//	interface->currentFrame->isValid = -1;
-			//	interface->state = EVOMIN_STATE_EOF;
-			//}
-			break;
-
-		case EVOMIN_STATE_CRC_OK:
-			goto error;
+			}
+			else
+			{
+				interface->currentFrame->isValid = -1;
+				interface->state = EVOMIN_STATE_CRC_FAIL;
+			}
 			break;
 
 		case EVOMIN_STATE_CRC_FAIL:
 			goto error;
-			break;
 
 		case EVOMIN_STATE_EOF:
 			if(cByte == EVOMIN_FRAME_EOF)
@@ -233,6 +228,7 @@ evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* b
 	uint32_t pCnt = 0;
 	uint32_t crcCnt = 0;
 	uint32_t bytesToSend = bLength;
+	const uint32_t crcBufSize = bytesToSend + 1 + 1;
 	int8_t foundPlHeader = -1;
 
 	/* Send SOF bytes */
@@ -241,15 +237,15 @@ evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* b
 	interface->evoMin_Handler_TX(EVOMIN_FRAME_SOF);
 
 	/* A transport frame always has a payload length of EVOMIN_MAX_PAYLOAD_SIZE while initialization */
+
 	/* Pre-initialize the crc buffer */
-	uint8_t crcBuffer[EVOMIN_TRANSPORT_FRAME_SIZE] = {
-		EVOMIN_FRAME_SOF, 
-		EVOMIN_FRAME_SOF,
-		EVOMIN_FRAME_SOF,
-		command
-		/* Index 4 is reserved for the length byte */
-	};
-	crcCnt = 5;
+	/* 0	command
+	   1	len
+	   2..n payload data */
+	uint8_t crcBuffer[crcBufSize];
+	crcBuffer[0] = command;
+	crcBuffer[1] = bytesToSend;
+	crcCnt = 1;
 
 	/* Send command byte */
 	interface->evoMin_Handler_TX(command);
@@ -267,15 +263,13 @@ evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* b
 		if(foundPlHeader == 1)
 		{
 			interface->evoMin_Handler_TX(EVOMIN_FRAME_STFBYT);
-			crcBuffer[++crcCnt] = EVOMIN_FRAME_STFBYT;
 			lastByte = EVOMIN_FRAME_STFBYT;
 
 			foundPlHeader = -1;
 		}
 		/* For the transmission of a frame body if two 0xAA bytes in a row are transmitted a stuff byte with value 0x55 
 	       is inserted into the transmitted byte stream */
-		if(bytes[cCnt] == EVOMIN_FRAME_SOF && lastByte == EVOMIN_FRAME_SOF)
-		{
+		if(bytes[cCnt] == EVOMIN_FRAME_SOF && lastByte == EVOMIN_FRAME_SOF) {
 			foundPlHeader = 1;
 		}
 
@@ -288,14 +282,9 @@ evoMin_sendFrame(struct evoMin_Interface* interface, uint8_t command, uint8_t* b
 		interface->evoMin_Handler_TX(nextByte);
 	}
 
-	/* Add length byte and EOF to crc
-	   The EOF byte is placed at the end of the package payload, not at the end of the pre-initialized packet
-	   So, if we only want to transmit 10 bytes of data i.e., the EOF byte is placed at the next byte after the last payload byte */
-	crcBuffer[4] = pCnt;
-	crcBuffer[crcCnt /* +1 */] = EVOMIN_FRAME_EOF;
-
 	/* Calculate and send the crc8 for the complete frame (excluding the crc8 itself) */
-	interface->evoMin_Handler_TX(evoMin_CRC8(crcBuffer, crcCnt));
+	uint8_t crc8 = evoMin_CRC8(crcBuffer, crcBufSize);
+	interface->evoMin_Handler_TX(crc8);
 
 	/* SEND EOF byte */
 	interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
