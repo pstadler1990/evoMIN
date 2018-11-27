@@ -21,15 +21,14 @@
 #include <stdint.h>
 
 #define	EVOMIN_FRAME_SIZE 				(uint32_t)7	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 1 eof byte */
-#define EVOMIN_MAX_PAYLOAD_SIZE			(uint32_t)64
+#define EVOMIN_MAX_PAYLOAD_SIZE			(uint32_t)32
 #define EVOMIN_TRANSPORT_FRAME_SIZE 	(uint32_t)EVOMIN_FRAME_SIZE + EVOMIN_MAX_PAYLOAD_SIZE
 /* number of bytes the receive buffer can hold, = max. amount of data at once */
-#define EVOMIN_RX_BUF_SIZE				(uint32_t)256
+#define EVOMIN_RX_BUF_SIZE				(uint32_t)32
 /* number of bytes a frame can hold as it's payload, = max. message size */
 #define EVOMIN_P_BUF_SIZE				(uint32_t)EVOMIN_MAX_PAYLOAD_SIZE
 /* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
 #define EVOMIN_MAX_FRAMES				(uint32_t)4
-
 /* Total memory usage: EVOMIN_RX_BUF_SIZE + ((EVOMIN_MAX_FRAMES * EVOMIN_P_BUF_SIZE) + EVOMIN_FRAME_SIZE) */
 
 enum evoMin_Command {

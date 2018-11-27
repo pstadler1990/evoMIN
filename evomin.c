@@ -378,6 +378,8 @@ buffer_push(struct evoMin_Buffer* buffer, uint8_t byte)
 			/* Buffer has overflowed, 
 		   	   set the OVR bit */
 			buffer->status |= EVOMIN_BUF_STATUS_MASK_OVR;
+
+			/* Override subsequent data */
 			buffer->tailOffset = 0;
 		}
 	}

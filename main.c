@@ -14,14 +14,16 @@ int main()
 	/* Test the buffer
 	 * 1. Fill different arrays and pass them to the RXHandler evoMin_Handler_ByteRecvd
 	 * 2. Watch for data overflows (especially what happens to overflowing data */
-	const uint32_t numberOfTests = 20;
-	const uint32_t payloadLength = 32;
+	const uint32_t numberOfTests = 16;
+	const uint32_t payloadLength = 4;
 
 	for(uint32_t f = 0; f < numberOfTests; f++)
 	{
 		uint32_t bufSize = payloadLength + EVOMIN_FRAME_SIZE;
 
 		evoMin_Handler_ByteRecvd(&comInterface, testData[f], bufSize);
+
+		printf("\nBuffer tail: %d, buffer head: %d\n", comInterface.rxBuffer.tailOffset, comInterface.rxBuffer.headOffset);
 
 		struct evoMin_Frame* frame = evoMin_getNextFrame(&comInterface);
 
@@ -34,6 +36,11 @@ int main()
 		{
 			uint8_t v = evoMin_FrameGetDataByte(&comInterface, frame, i);
 			printf("0x%X (%d)\n", v, v);
+		}
+
+		if(frame->buffer.size & EVOMIN_BUF_STATUS_MASK_OVR)
+		{
+			printf("\nBuffer override\n");
 		}
 	}
 	return 0;
