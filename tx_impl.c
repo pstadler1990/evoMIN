@@ -1,4 +1,5 @@
 #include "evomin.h"
+#include "tx_impl.h"
 #include <stdio.h>
 
 void 
