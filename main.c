@@ -1,77 +1,68 @@
 #include <stdio.h>
+#include <stdint.h>
 #include "evomin.h"
-#include "tx_impl.h"
-
+#include "evoMIN_tx_impl.h"
 #include "testdata.h"
 
 struct evoMin_Interface comInterface;
 
+/* Test */
+uint8_t globalRxBuffer[32];
+uint32_t globalRxBufferIndex = 0;
+static int8_t MIN_Test_BasicSendFrameAndReceive(void);
+
+
+/*
+    ###################################
+ 	Alles wichtige => siehe tx_impl.c !
+ 	###################################
+*/
 int main()
 {
 	evoMin_Init(&comInterface);
-	evoMin_SetTXHandler(&comInterface, &evoMin_comTXImplementation);
+	evoMin_SetTXHandler(&comInterface, &evoMin_Handler_TX);
 
-	/* Test receive buffer and frame callback */
-	const uint32_t numberOfTests = 16;
-	const uint32_t payloadLength = 26;
-
-	/*for(uint32_t f = 0; f < numberOfTests; f++)
-	{
-		uint32_t bufSize = payloadLength + EVOMIN_FRAME_SIZE;
-
-		for(uint32_t i=0; i < bufSize; i++)
-		{
-			evoMin_RXHandler(&comInterface, testData[f][i]);
-		}
-	}
-	*/
-	/* Test sending of a frame */
-	const uint32_t sendBufferLen = 9;
-	uint8_t sendBuffer[] = {
-			0xAA,
-			0xAA,
-			0xAA,
-			0xBB,
-			0xAA,
-			0xAA,
-			0xAA,
-			0xCC,
-			0xDD
-	};
-
-	uint8_t crc8Test = evoMin_CRC8(sendBuffer, 9);
-	printf("\nCrc8 test: %d\n", crc8Test);
-
-	evoMin_sendFrame(&comInterface, EVOMIN_CMD_CHIP, sendBuffer, sendBufferLen);
-
-	uint32_t testBuffer2Len = 18;
-	uint8_t testBuffer2[] = {
-			 0xAA,
-			 0xAA,
-			 0xAA,
-			 0xF0,
-			 9,
-			 0xAA,
-			 0xAA,
-			0x55,
-			 0xAA,
-			 0xBB,
-			 0xAA,
-			 0xAA,
-			0x55,
-			 0xAA,
-			 0xCC,
-			 0xDD,
-			 crc8Test,
-			0x55
-	};
-	uint32_t bufSize = testBuffer2Len + EVOMIN_FRAME_SIZE;
-
-	for(uint32_t i=0; i < bufSize; i++)
-	{
-		evoMin_RXHandler(&comInterface, testBuffer2[i]);
-	}
-
+	MIN_Test_BasicSendFrameAndReceive();
 
 	return 0;
 }
+
+
+int8_t
+MIN_Test_BasicSendFrameAndReceive(void)  {
+	struct evoMin_Frame sendFrame;
+
+	uint8_t idnBuf[] = {
+			0xCA,
+			0xDE
+	};
+
+	evoMin_InitializeFrame(&sendFrame);
+	evoMin_CreateFrame(&comInterface, &sendFrame, EVOMIN_CMD_SEND_IDN, idnBuf, 2);
+	evoMin_QueueFrame(&comInterface, &sendFrame);
+	evoMin_QueueFrame(&comInterface, &sendFrame);
+	evoMin_QueueFrame(&comInterface, &sendFrame);
+
+
+	for(uint32_t i = 0; i < 32; i++) {
+		evoMin_SendResendLastFrame(&comInterface);
+	}
+
+	evoMin_QueueFrame(&comInterface, &sendFrame);
+
+	for(uint32_t i = 0; i < 32; i++) {
+		evoMin_SendResendLastFrame(&comInterface);
+	}
+
+	evoMin_QueueFrame(&comInterface, &sendFrame);
+	evoMin_QueueFrame(&comInterface, &sendFrame);
+	evoMin_QueueFrame(&comInterface, &sendFrame);
+
+	for(uint32_t i = 0; i < 32; i++) {
+		evoMin_SendResendLastFrame(&comInterface);
+	}
+
+
+	return 1;
+}
+
