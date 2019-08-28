@@ -23,7 +23,6 @@ enum {
 	EVOMIN_STATE_CRC_FAIL,
 	EVOMIN_STATE_EOF,
 	EVOMIN_STATE_MSG_SENT_WAIT_FOR_ACK,
-	EVOMIN_STATE_MSG_SENT_WAIT_FOR_CRC,
 	EVOMIN_STATE_ERROR
 };
 
@@ -95,7 +94,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			/* Reception of a ACK byte while in this state
 			   indicates the reception of an evoMIN message on the target side */
 			if(cByte == EVOMIN_FRAME_ACK) {
-				interface->state = EVOMIN_STATE_MSG_SENT_WAIT_FOR_CRC;
 				/* By setting isSent we indicate that this frame has been received - and thus sent - with success.
 				   It will be dequeued and cleared within the next loop */
 				queue_get_active_frame(interface)->isSent = 1;
