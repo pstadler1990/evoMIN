@@ -2,6 +2,8 @@
 #include "evoMIN_tx_impl.h"
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <time.h>
 
 
 uint8_t
@@ -29,6 +31,12 @@ uint8_t
 evoMin_Handler_TX(uint8_t byte) {
 	printf("Send TX byte: %X\n", byte);
 	return 0;
+}
+
+uint32_t
+evoMin_GetTimeNow(void) {
+	time_t now = time(0);
+	return (uint32_t) now;
 }
 
 void

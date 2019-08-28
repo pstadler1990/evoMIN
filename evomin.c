@@ -26,6 +26,7 @@ enum {
 	EVOMIN_STATE_ERROR
 };
 
+static void initialize_frame(struct evoMin_Frame* frame);
 #ifndef EVOMIN_TX_DISABLE
 ResultState_t send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame);
 #endif
@@ -50,7 +51,7 @@ evoMin_Init(struct evoMin_Interface* interface) {
 	interface->evoMin_Handler_TX = 0;
 #endif
 	interface->currentFrame = &interface->receivedFrames[interface->currentFrameOffset];
-	evoMin_InitializeFrame(interface->currentFrame);
+	initialize_frame(interface->currentFrame);
 	
 	interface->state = EVOMIN_STATE_IDLE;
 }
@@ -143,7 +144,7 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			interface->currentFrame = &interface->receivedFrames[interface->currentFrameOffset];
 
 			/* initialize the current frame */
-			evoMin_InitializeFrame(interface->currentFrame);
+			initialize_frame(interface->currentFrame);
 
 			interface->currentFrameBytesReceived = 0;
 			interface->currentFrame->command = cByte;
@@ -264,10 +265,7 @@ evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n) {
  returns the number of sent bytes */
 uint8_t 
 evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, uint8_t bLength) {
-  	/* evoMin frame needs to be initialized by the user */
-  	if(!frame->isInitialized) {
-		return 0;
-	}
+	initialize_frame(frame);
 	
 	uint8_t bytesToSend = bLength;
 	
@@ -275,6 +273,7 @@ evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, 
 	frame->isValid = 0;
 	frame->isSent = 0;
 	frame->command = command;
+	frame->timestamp = evoMin_GetTimeNow();
 	
 	/* If the payload length is larger than the maximum payload size,
 	 only send EVOMIN_MAX_PAYLOAD_SIZE bytes */
@@ -298,6 +297,8 @@ evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame frame)
 		/* Cannot queue the frame as we're already full */
 		return CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_QUEUEFRAME, prio_Low);
 	}
+
+	frame.timestamp = evoMin_GetTimeNow();
 
 	interface->queue[interface->queuePtrW] = frame;
 	interface->queuePtrW++;
@@ -327,7 +328,17 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 	}
 	printf("Popped frame from queue, queuePtrR: %d\n", interface->queuePtrR);
 
+	if(frame->retriesLeft != EVOMIN_SEND_RETRIES_ON_FAIL
+		&& (evoMin_GetTimeNow() - frame->timestamp) < EVOMIN_SEND_RETRY_MIN_TIME){
+		/* Send / resend frame if a minimum time of EVOMIN_SEND_RETRY_MIN_TIME has passed since the last try */
+		printf(" XXX WAITING FOR RETRY TIME TO PASS XXX\n");
+		return;
+	}
+
+	/* Update timestamp and (re)send frame */
+	frame->timestamp = evoMin_GetTimeNow();
 	send_frame(interface, frame);
+
 	if(!frame->isSent && frame->retriesLeft - 1 > 0) {
 		printf("Retrying (%d of %d) frame..\n", (EVOMIN_SEND_RETRIES_ON_FAIL - frame->retriesLeft) + 1, EVOMIN_SEND_RETRIES_ON_FAIL -1);
 		frame->retriesLeft--;
@@ -354,17 +365,6 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 	}
 }
 
-void
-evoMin_InitializeFrame(struct evoMin_Frame* frame) {
-	frame->isValid = 0;
-	frame->command = EVOMIN_CMD_RESERVED;
-	frame->pLength = 0;
-	frame->isSent = 0;
-	frame->retriesLeft = EVOMIN_SEND_RETRIES_ON_FAIL;
-	frame->isInitialized = buffer_initialize(&frame->buffer);
-	frame->crc8 = 0;
-}
-
 uint8_t
 evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame frame) {
 	/* Force sending a frame immediately,
@@ -386,6 +386,17 @@ evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Fr
 
 
 /* Private functions */
+static void
+initialize_frame(struct evoMin_Frame* frame) {
+	frame->isValid = 0;
+	frame->command = EVOMIN_CMD_RESERVED;
+	frame->pLength = 0;
+	frame->isSent = 0;
+	frame->retriesLeft = EVOMIN_SEND_RETRIES_ON_FAIL;
+	frame->isInitialized = buffer_initialize(&frame->buffer);
+	frame->crc8 = 0;
+}
+
 #ifndef EVOMIN_TX_DISABLE
 ResultState_t
 send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {

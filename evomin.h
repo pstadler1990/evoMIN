@@ -50,6 +50,7 @@
 #define EVOMIN_P_BUF_SIZE				(uint32_t)EVOMIN_MAX_PAYLOAD_SIZE
 #define EVOMIN_BUFFER_SIZE				(uint32_t)EVOMIN_P_BUF_SIZE + 2
 #define	EVOMIN_SEND_RETRIES_ON_FAIL		(uint32_t)3
+#define EVOMIN_SEND_RETRY_MIN_TIME		(uint32_t)3	// TODO: Replace with real value
 
 /* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
 #define EVOMIN_MAX_FRAMES				(uint32_t)4
@@ -80,6 +81,8 @@ struct evoMin_Frame {
 	struct evoMin_Buffer buffer;
 	uint8_t pLength;
 	uint8_t crc8;
+
+	uint32_t timestamp;
 	
 	uint32_t retriesLeft;
 };

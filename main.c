@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
 #include "evomin.h"
 #include "evoMIN_tx_impl.h"
 #include "testdata.h"
@@ -31,37 +32,30 @@ int main()
 int8_t
 MIN_Test_BasicSendFrameAndReceive(void)  {
 	struct evoMin_Frame sendFrame;
+	struct evoMin_Frame sendFrame2;
 
 	uint8_t idnBuf[] = {
 			0xCA,
 			0xDE
 	};
 
-	evoMin_InitializeFrame(&sendFrame);
+	uint8_t buf2[] = {
+			0xDE,
+			0xAD,
+			0xBE,
+			0xEF
+	};
+
 	evoMin_CreateFrame(&sendFrame, EVOMIN_CMD_SEND_IDN, idnBuf, 2);
 	evoMin_QueueFrame(&comInterface, sendFrame);
-	evoMin_QueueFrame(&comInterface, sendFrame);
-	evoMin_QueueFrame(&comInterface, sendFrame);
 
+	evoMin_CreateFrame(&sendFrame2, EVOMIN_CMD_SET_CHANNEL, buf2, 4);
+	evoMin_QueueFrame(&comInterface, sendFrame2);
 
-	for(uint32_t i = 0; i < 32; i++) {
+	while(1) {
 		evoMin_SendResendLastFrame(&comInterface);
+		sleep(1);
 	}
-
-	evoMin_QueueFrame(&comInterface, sendFrame);
-
-	for(uint32_t i = 0; i < 32; i++) {
-		evoMin_SendResendLastFrame(&comInterface);
-	}
-
-	evoMin_QueueFrame(&comInterface, sendFrame);
-	evoMin_QueueFrame(&comInterface, sendFrame);
-	evoMin_QueueFrame(&comInterface, sendFrame);
-
-	for(uint32_t i = 0; i < 32; i++) {
-		evoMin_SendResendLastFrame(&comInterface);
-	}
-
 
 	return 1;
 }
