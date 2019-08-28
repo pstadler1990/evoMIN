@@ -98,6 +98,8 @@ struct evoMin_Interface {
 	uint8_t lastRcvdByte;
 	int8_t 	lastByteWasSTFBYT;
 
+	struct evoMin_Frame forcedFrame;
+
 	uint8_t state;
 
 	/* Interface from the hardware low-level, must be implemented if you require sending data */
@@ -112,6 +114,7 @@ void evoMin_SetTXHandler(struct evoMin_Interface* interface, uint8_t (*evoMin_Ha
 void evoMin_InitializeFrame(struct evoMin_Frame* frame);
 uint8_t evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, uint8_t bLength);
 ResultState_t evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame* frame);
+uint8_t evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame* frame);
 void evoMin_SendResendLastFrame(struct evoMin_Interface* interface);
 uint8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
 

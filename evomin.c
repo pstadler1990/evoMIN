@@ -45,6 +45,7 @@ evoMin_Init(struct evoMin_Interface* interface) {
 	interface->queuePtrR = 0;
 	interface->currentFrameOffset = 0;
 	interface->lastByteWasSTFBYT = -1;
+	interface->forcedFrame = (struct evoMin_Frame) {};
 #ifndef EVOMIN_TX_DISABLE
 	interface->evoMin_Handler_TX = 0;
 #endif
@@ -65,6 +66,7 @@ evoMin_DeInit(struct evoMin_Interface* interface) {
 	interface->lastRcvdByte = 0;
 	interface->queuePtrR = 0;
 	interface->queuePtrW = 0;
+	interface->forcedFrame = (struct evoMin_Frame) {};
 #ifndef EVOMIN_TX_DISABLE
 	interface->evoMin_Handler_TX = 0;
 #endif
@@ -96,7 +98,12 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			if(cByte == EVOMIN_FRAME_ACK) {
 				/* By setting isSent we indicate that this frame has been received - and thus sent - with success.
 				   It will be dequeued and cleared within the next loop */
-				queue_get_active_frame(interface)->isSent = 1;
+				if(!interface->forcedFrame.isInitialized) {
+					queue_get_active_frame(interface)->isSent = 1;
+				} else {
+					/* There's a forced frame that has been sent */
+					interface->forcedFrame = (struct evoMin_Frame) {};
+				}
 				interface->state = EVOMIN_STATE_IDLE;
 			} else {
 				CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_ACK, prio_Low);
@@ -308,8 +315,14 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 		return;
 	}
 
-	struct evoMin_Frame* frame = queue_get_active_frame(interface);
-	if(!frame) {
+	struct evoMin_Frame* frame = NULL;
+
+	if(!interface->forcedFrame.isInitialized) {
+		frame = queue_get_active_frame(interface);
+	} else {
+		frame = &interface->forcedFrame;
+	}
+	if(!(frame && frame->isInitialized)) {
 		return;
 	}
 	printf("Popped frame from queue, queuePtrR: %d\n", interface->queuePtrR);
@@ -346,6 +359,19 @@ evoMin_InitializeFrame(struct evoMin_Frame* frame) {
 	frame->retriesLeft = EVOMIN_SEND_RETRIES_ON_FAIL;
 	frame->isInitialized = buffer_initialize(&frame->buffer);
 	frame->crc8 = 0;
+}
+
+uint8_t
+evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
+	/* Force sending a frame immediately,
+	   therefor we need to place it in a special buffer and circumvent the regular queue */
+	if(interface->forcedFrame.isInitialized) {
+		/* There's another forced frame already, that hasn't been sent yet, cancel */
+		return 0;
+	}
+	interface->forcedFrame = *frame;
+	send_frame(interface, &interface->forcedFrame);
+	return 1;
 }
 
 
