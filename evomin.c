@@ -326,12 +326,11 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 	if(!(frame && frame->isInitialized)) {
 		return;
 	}
-	printf("Popped frame from queue, queuePtrR: %d\n", interface->queuePtrR);
 
 	if(frame->retriesLeft != EVOMIN_SEND_RETRIES_ON_FAIL
 		&& (evoMin_GetTimeNow() - frame->timestamp) < EVOMIN_SEND_RETRY_MIN_TIME){
-		/* Send / resend frame if a minimum time of EVOMIN_SEND_RETRY_MIN_TIME has passed since the last try */
-		printf(" XXX WAITING FOR RETRY TIME TO PASS XXX\n");
+		/* Resend frame if a minimum time of EVOMIN_SEND_RETRY_MIN_TIME has passed since the last try.
+		   However, this only happens after the first try, as the first try immediately sends the frame! */
 		return;
 	}
 
