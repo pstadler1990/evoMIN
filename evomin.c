@@ -102,7 +102,7 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 					queue_get_active_frame(interface)->isSent = 1;
 				} else {
 					/* There's a forced frame that has been sent */
-					interface->forcedFrame = (struct evoMin_Frame) {};
+					interface->forcedFrame.isSent = 1;
 				}
 				interface->state = EVOMIN_STATE_IDLE;
 			} else {
@@ -338,7 +338,11 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 			CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SENDFRAME_RETRY, prio_Low);
 			printf("Frame could NOT be sent\n");
 		}
-		memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
+		if(!interface->forcedFrame.isInitialized) {
+			memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
+		} else {
+			interface->forcedFrame = (struct evoMin_Frame) {};
+		}
 
 		if(interface->queuePtrR + 1 == interface->queuePtrW) {
 			interface->queuePtrR = 0;
@@ -371,6 +375,12 @@ evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Fr
 	}
 	interface->forcedFrame = *frame;
 	send_frame(interface, &interface->forcedFrame);
+
+	while(!interface->forcedFrame.isSent) {
+		evoMin_SendResendLastFrame(interface);
+		/* Interrupt should be called meanwhile to set isSent,
+		   otherwise the frame will get discarded after n retries */
+	}
 	return 1;
 }
 
