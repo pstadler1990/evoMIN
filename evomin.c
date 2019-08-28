@@ -33,7 +33,7 @@ ResultState_t send_frame(struct evoMin_Interface* interface, struct evoMin_Frame
 static uint8_t buffer_initialize(struct evoMin_Buffer* buffer);
 static uint8_t buffer_push(struct evoMin_Buffer* buffer, uint8_t byte);
 static struct evoMin_Frame* queue_get_active_frame(struct evoMin_Interface* interface);
-static uint8_t sent_frame_is_valid(struct evoMin_Interface* interface, uint8_t frameCRC);
+
 
 void 
 evoMin_Init(struct evoMin_Interface* interface) {
@@ -90,29 +90,20 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
   	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN, prio_None);
 	
 	int8_t copyState;
+	uint8_t crc;
+
 	switch (interface->state) {
 		case EVOMIN_STATE_MSG_SENT_WAIT_FOR_ACK:
 			/* Reception of a ACK byte while in this state
 			   indicates the reception of an evoMIN message on the target side */
 			if(cByte == EVOMIN_FRAME_ACK) {
 				interface->state = EVOMIN_STATE_MSG_SENT_WAIT_FOR_CRC;
-			} else {
-				CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_ACK, prio_Low);
-				goto error;
-			}
-			break;
-
-		case EVOMIN_STATE_MSG_SENT_WAIT_FOR_CRC:
-			/* Reception of a CRC byte following an ACK byte,
-			   if the currently enqueued frame's CRC matches the received the frame is valid,
-			   else the transmission was corrupted */
-			if(sent_frame_is_valid(interface, cByte)) {
 				/* By setting isSent we indicate that this frame has been received - and thus sent - with success.
 				   It will be dequeued and cleared within the next loop */
 				queue_get_active_frame(interface)->isSent = 1;
 				interface->state = EVOMIN_STATE_IDLE;
 			} else {
-				CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_CRC, prio_Low);
+				CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_ACK, prio_Low);
 				goto error;
 			}
 			break;
@@ -136,7 +127,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			break;
 
 		case EVOMIN_STATE_SOF2:
-
 			if (cByte == EVOMIN_FRAME_SOF) {
 				interface->state = EVOMIN_STATE_CMD;
 			} else {
@@ -211,12 +201,14 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			interface->currentFrame->crc8 = cByte;
 
 			/* Check, if the transmitted crc8 equals the calculated one */
-			if (interface->currentFrame->crc8 == evoMin_CRC8(interface->currentFrame->buffer.buffer, interface->currentFrame->pLength+2)) {
+			crc = evoMin_CRC8(interface->currentFrame->buffer.buffer, interface->currentFrame->pLength+2);
+			if (interface->currentFrame->crc8 == crc) {
 				interface->currentFrame->isValid = 1;
 				interface->state = EVOMIN_STATE_EOF;
 
-				/* Echo CRC8 over low-level send routine (prefill TX buffer for the EOF state) */
-				interface->evoMin_Handler_TX(interface->currentFrame->crc8);
+				/* Send ACK byte to acknowledge reception of message (pre-fill TX buffer to be ready at the EOF byte) */
+				interface->evoMin_Handler_TX(EVOMIN_FRAME_ACK);
+
 			} else {
 				interface->currentFrame->isValid = 0;
 				interface->state = EVOMIN_STATE_CRC_FAIL;
@@ -269,7 +261,7 @@ evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n) {
 /* Creates a frame to be sent over the low-level transport layer from a command, a byte buffer and its length
  returns the number of sent bytes */
 uint8_t 
-evoMin_CreateFrame(struct evoMin_Interface* interface, struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, uint8_t bLength) {
+evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, uint8_t bLength) {
   	/* evoMin frame needs to be initialized by the user */
   	if(!frame->isInitialized) {
 		return 0;
@@ -298,11 +290,11 @@ evoMin_CreateFrame(struct evoMin_Interface* interface, struct evoMin_Frame* fram
 
 ResultState_t
 evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
-	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN_QUEUEFRAME, prio_None);
+	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN + src_evoMIN_QUEUEFRAME, prio_None);
 
 	if(interface->queuePtrW + 1 > EVOMIN_MAX_FRAMES) {
 		/* Cannot queue the frame as we're already full */
-		return CreateResultState(type_OutOfBounds, src_evoMIN_QUEUEFRAME, prio_Low);
+		return CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_QUEUEFRAME, prio_Low);
 	}
 
 	memcpy(&interface->queue[interface->queuePtrW], frame, sizeof(struct evoMin_Frame));
@@ -335,6 +327,7 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 		/* No more retries or frame already sent, dequeue frame (discard) */
 		if(!frame->isSent) {
 			/* ERROR, frame couldn't be sent */
+			CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SENDFRAME_RETRY, prio_Low);
 			printf("Frame could NOT be sent\n");
 		}
 		memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
@@ -366,7 +359,7 @@ evoMin_InitializeFrame(struct evoMin_Frame* frame) {
 ResultState_t
 send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 	/* Sends a previously created frame via the low-level implementation of the evoMin_Handler_TX callback */
-	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN_SENDFRAME, prio_None);
+	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN + src_evoMIN_SENDFRAME, prio_None);
 
 	uint32_t bytesSent = EVOMIN_FRAME_SIZE;	 /* Start with frame size of bytes and increase for each additional byte */
 	uint8_t nextByte = 0;
@@ -392,7 +385,7 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 	if(!frame->isValid) {
 		crcBuffer = calloc(crcBufSize, sizeof(uint8_t));
 		if(!crcBuffer) {
-			return CreateResultState(type_OutOfBounds, src_evoMIN_SENDFRAME_BUF_ALLOC, prio_High);
+			return CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SENDFRAME_BUF_ALLOC, prio_High);
 		}
 		crcBuffer[0] = frame->command;
 		crcBuffer[1] = bytesToSend;
@@ -476,13 +469,4 @@ buffer_push(struct evoMin_Buffer* buffer, uint8_t byte) {
 static struct evoMin_Frame*
 queue_get_active_frame(struct evoMin_Interface* interface) {
 	return &interface->queue[interface->queuePtrR];
-}
-
-static uint8_t
-sent_frame_is_valid(struct evoMin_Interface* interface, uint8_t frameCRC) {
-	struct evoMin_Frame* activeFrame = queue_get_active_frame(interface);
-	if(!activeFrame || !activeFrame->isInitialized) {
-		return 0;
-	}
-	return (uint8_t) (activeFrame->crc8 == frameCRC);
 }

@@ -38,7 +38,7 @@ MIN_Test_BasicSendFrameAndReceive(void)  {
 	};
 
 	evoMin_InitializeFrame(&sendFrame);
-	evoMin_CreateFrame(&comInterface, &sendFrame, EVOMIN_CMD_SEND_IDN, idnBuf, 2);
+	evoMin_CreateFrame(&sendFrame, EVOMIN_CMD_SEND_IDN, idnBuf, 2);
 	evoMin_QueueFrame(&comInterface, &sendFrame);
 	evoMin_QueueFrame(&comInterface, &sendFrame);
 	evoMin_QueueFrame(&comInterface, &sendFrame);
