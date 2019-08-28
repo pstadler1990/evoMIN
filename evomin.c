@@ -229,6 +229,9 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 
 				/* external callback */
 				evoMin_Handler_FrameRecvd(interface->currentFrame);
+			} else {
+				resultState = CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SOF, prio_Low);
+				goto error;
 			}
 			break;
 
