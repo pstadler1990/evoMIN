@@ -1,34 +1,35 @@
 /*
- EVOMIN transport protocol
- 
+ evoMIN transport protocol
+ -------------------------
+ Note: evoMIN works best with an asynchronous transport layer, i.e. UART, as it depends on various callbacks from the wires
+
  Procedure:
- 1. Enable transport layer (low-level), i.e. I2C, SPI
+ 1. Enable transport layer (low-level), i.e. UART on both, target and host
  2. Use evoMin_Init() to initialize a passed instance of evoMin_Interface
  3. evoMin_RXHandler() needs to be called from within the low-level transport routine (i.e. IRQHandler for SPI/I2C/UART)
  with the received byte (if you want to receive data, otherwise just skip this method)
  4. Whenever a new, valid frame is received, the evoMin_Handler_FrameRecvd() callback gets called from evoMIN
  5. To send data, one must implement a TX callback method (low-level implementation for the send transport layer, i.e. I2C, SPI)
  and assign the implemented callback to the interface by using evoMin_SetTXHandler()
- If the device is receive-only, you can disable sending by compiling with the EVOMIN_TX_DISABLE statement.
- 
+ If the device is receive-only, you can disable sending by compiling with a EVOMIN_TX_DISABLE preprocessor statement.
+
  To send a frame:
   - First create a transport frame for your command and payload using evoMin_createFrame()
-    This method needs to be called via a user allocated evoMin_Frame
-  - MAKE SURE TO INITIALIZE THE FRAME FIRST, using evoMin_InitializeFrame()!
-  - To eventually send the previously created frame, use the evoMin_sendFrame() method and pass it the created frame.
-    This function can try to resend a frame, if the received checksum from the target device doesn't match with the calculated crc in the sendFrame()-method. 
-	You can define the retry count in evomin.h EVOMIN_SEND_RETRIES_ON_FAIL (default: 3)
-  
-  Example for sending a frame:
-  ----------------------------
-  struct evoMin_Frame sendFrame;
-  // ...
-  evoMin_InitializeFrame(&sendFrame);
-  evoMin_createFrame(FPGA_Interface.comInterface, &sendFrame, command, payload, payloadLength);
-  ResultState_t sendResult = evoMin_sendFrame(FPGA_Interface.comInterface, &sendFrame);	// sendResult is type_OutOfBounds with src_evoMIN_SENDFRAME if the 
-																						// frame couldn't be send within EVOMIN_SEND_RETRIES_ON_FAIL retries
-  // ...
-  
+    This method needs to be called via a user allocated evoMin_Frame reference.
+  - To eventually send the previously created frame, use the evoMin_QueueFrame() function and pass by copy the created frame.
+  	Your frame is now enqueued, but hasn't been sent yet. Sending and resending (on previous failure) of frames is automatically done
+  	by the evoMin_SendResendLastFrame() function - note: this function has to be called regularly, i.e. inside your application's main loop,
+  	or a timer. The evoMin_SendResendLastFrame() function is responsible for sending and resending frames until the frame's retry count is zero.
+	You can define the retry count through EVOMIN_SEND_RETRIES_ON_FAIL (evoMIN_specific.h), default is 3
+
+ Example for sending a frame:
+ ----------------------------
+ struct evoMin_Frame sendFrame;
+ // ... allocate payload
+ evoMin_createFrame(&sendFrame, command, payload, payloadLength);
+ evoMin_QueueFrame(&evoMinInterface, &sendFrame);
+ // ...
+
  Buffer status management:
  The buffer of each individual frame can be checked against overflows etc. Therefor, use the EVOMIN_BUF_STATUS_MASK_xxx masks
 
@@ -37,21 +38,14 @@
  but INCLUDING the command and the payload length byte!
  0	 	command byte
  1	 	payload length byte
- 2..n 	payload bytes
-*/
+ 2..n 	payload bytes */
 #ifndef __EVOMIN_H_
 #define __EVOMIN_H_
 
-#include "evoMIN_commands.h"
+#include "evoMIN_specific.h"
 #include "evoErrorHandler.h"
 
 #define EVOMIN_FRAME_SIZE 				(uint32_t)7	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 1 eof byte */
-#define EVOMIN_MAX_PAYLOAD_SIZE			(uint32_t)50
-#define EVOMIN_P_BUF_SIZE				(uint32_t)EVOMIN_MAX_PAYLOAD_SIZE
-#define EVOMIN_BUFFER_SIZE				(uint32_t)EVOMIN_P_BUF_SIZE + 2
-#define	EVOMIN_SEND_RETRIES_ON_FAIL		(uint32_t)3
-#define EVOMIN_SEND_RETRY_MIN_TIME		(uint32_t)3	// TODO: Replace with real value
-
 /* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
 #define EVOMIN_MAX_FRAMES				(uint32_t)4
 
