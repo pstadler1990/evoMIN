@@ -90,8 +90,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
   	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN, prio_None);
 	
 	int8_t copyState;
-	uint8_t crc;
-
 	switch (interface->state) {
 		case EVOMIN_STATE_MSG_SENT_WAIT_FOR_ACK:
 			/* Reception of a ACK byte while in this state
@@ -201,8 +199,7 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			interface->currentFrame->crc8 = cByte;
 
 			/* Check, if the transmitted crc8 equals the calculated one */
-			crc = evoMin_CRC8(interface->currentFrame->buffer.buffer, interface->currentFrame->pLength+2);
-			if (interface->currentFrame->crc8 == crc) {
+			if (interface->currentFrame->crc8 == evoMin_CRC8(interface->currentFrame->buffer.buffer, interface->currentFrame->pLength+2)) {
 				interface->currentFrame->isValid = 1;
 				interface->state = EVOMIN_STATE_EOF;
 

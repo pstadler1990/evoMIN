@@ -27,7 +27,7 @@ evoMin_CRC8(uint8_t* bytes, uint32_t bLen) {
 
 uint8_t
 evoMin_Handler_TX(uint8_t byte) {
-	printf("Send byte: %X\n", byte);
+	printf("Send TX byte: %X\n", byte);
 	return 0;
 }
 
