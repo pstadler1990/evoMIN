@@ -113,8 +113,8 @@ void evoMin_DeInit(struct evoMin_Interface* interface);
 void evoMin_SetTXHandler(struct evoMin_Interface* interface, uint8_t (*evoMin_Handler_TX)(uint8_t byte));
 void evoMin_InitializeFrame(struct evoMin_Frame* frame);
 uint8_t evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, uint8_t bLength);
-ResultState_t evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame* frame);
-uint8_t evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame* frame);
+ResultState_t evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame frame);
+uint8_t evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame frame);
 void evoMin_SendResendLastFrame(struct evoMin_Interface* interface);
 uint8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
 

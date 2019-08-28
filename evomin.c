@@ -291,7 +291,7 @@ evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, 
 }
 
 ResultState_t
-evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
+evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame frame) {
 	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN + src_evoMIN_QUEUEFRAME, prio_None);
 
 	if(interface->queuePtrW + 1 > EVOMIN_MAX_FRAMES) {
@@ -299,7 +299,7 @@ evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame* frame
 		return CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_QUEUEFRAME, prio_Low);
 	}
 
-	memcpy(&interface->queue[interface->queuePtrW], frame, sizeof(struct evoMin_Frame));
+	interface->queue[interface->queuePtrW] = frame;
 	interface->queuePtrW++;
 	printf("Added frame to queue, queuePtrW: %d\n", interface->queuePtrW);
 
@@ -366,14 +366,14 @@ evoMin_InitializeFrame(struct evoMin_Frame* frame) {
 }
 
 uint8_t
-evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
+evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame frame) {
 	/* Force sending a frame immediately,
 	   therefor we need to place it in a special buffer and circumvent the regular queue */
 	if(interface->forcedFrame.isInitialized) {
 		/* There's another forced frame already, that hasn't been sent yet, cancel */
 		return 0;
 	}
-	interface->forcedFrame = *frame;
+	interface->forcedFrame = frame;
 	send_frame(interface, &interface->forcedFrame);
 
 	while(!interface->forcedFrame.isSent) {
