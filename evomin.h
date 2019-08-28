@@ -15,7 +15,7 @@
 
  To send a frame:
   - First create a transport frame for your command and payload using evoMin_createFrame()
-    This method needs to be called via a user allocated evoMin_Frame reference.
+    This method needs to be called with a user allocated evoMin_Frame reference.
   - To eventually send the previously created frame, use the evoMin_QueueFrame() function and pass by copy the created frame.
   	Your frame is now enqueued, but hasn't been sent yet. Sending and resending (on previous failure) of frames is automatically done
   	by the evoMin_SendResendLastFrame() function - note: this function has to be called regularly, i.e. inside your application's main loop,
@@ -28,6 +28,12 @@
  // ... allocate payload
  evoMin_createFrame(&sendFrame, command, payload, payloadLength);
  evoMin_QueueFrame(&evoMinInterface, &sendFrame);
+ // ...
+
+ Main loop:
+ while(true) {
+ // ...
+   evoMin_SendResendLastFrame(&evoMinInterface);
  // ...
 
  Buffer status management:
