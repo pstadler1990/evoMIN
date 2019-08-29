@@ -305,7 +305,6 @@ evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame frame)
 
 	interface->queue[interface->queuePtrW] = frame;
 	interface->queuePtrW++;
-	printf("Added frame to queue, queuePtrW: %d\n", interface->queuePtrW);
 
 	return resultState;
 }
@@ -342,14 +341,12 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 	send_frame(interface, frame);
 
 	if(!frame->isSent && frame->retriesLeft - 1 > 0) {
-		printf("Retrying (%d of %d) frame..\n", (EVOMIN_SEND_RETRIES_ON_FAIL - frame->retriesLeft) + 1, EVOMIN_SEND_RETRIES_ON_FAIL -1);
 		frame->retriesLeft--;
 	} else {
 		/* No more retries or frame already sent, dequeue frame (discard) */
 		if(!frame->isSent) {
 			/* ERROR, frame couldn't be sent */
 			CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SENDFRAME_RETRY, prio_Low);
-			printf("Frame could NOT be sent\n");
 		}
 		if(!interface->forcedFrame.isInitialized) {
 			memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
@@ -360,7 +357,6 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 		if(interface->queuePtrR + 1 == interface->queuePtrW) {
 			interface->queuePtrR = 0;
 			interface->queuePtrW = 0;
-			printf("Reached end of frames, reset buffer\n");
 		} else {
 			interface->queuePtrR++;
 		}
@@ -458,7 +454,7 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 
 		nextByte = frame->buffer.buffer[cCnt];
 
-		if(!frame->isValid) {
+		if(!frame->isValid && crcBuffer) {
 			crcBuffer[++crcCnt] = frame->buffer.buffer[cCnt];
 		}
 
@@ -469,7 +465,7 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 		bytesSent++;
 	}
 
-	if(!frame->isValid) {
+	if(!frame->isValid && crcBuffer) {
 		/* Calculate and send the crc8 for the complete frame (excluding the crc8 itself) */
 		frame->crc8 = evoMin_CRC8(crcBuffer, crcBufSize);
 		frame->isValid = 1;
