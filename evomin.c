@@ -4,7 +4,7 @@
 #include "evomin.h"
 #include "evoErrorHandler.h"
 #include "ErrorHandler_EvoMIN.h"
-#include "evoMIN_tx_impl.h"
+#include "evoMIN_impl.h"
 
 enum {
 	EVOMIN_FRAME_SOF = 0xAA, EVOMIN_FRAME_EOF = 0x55, EVOMIN_FRAME_STFBYT = 0x55, EVOMIN_FRAME_ACK = 0xFF
@@ -46,7 +46,7 @@ evoMin_Init(struct evoMin_Interface* interface) {
 	interface->queuePtrR = 0;
 	interface->currentFrameOffset = 0;
 	interface->lastByteWasSTFBYT = -1;
-	interface->forcedFrame = (struct evoMin_Frame) {};
+	interface->forcedFrame = (struct evoMin_Frame) { 0 };
 #ifndef EVOMIN_TX_DISABLE
 	interface->evoMin_Handler_TX = 0;
 #endif
@@ -67,7 +67,7 @@ evoMin_DeInit(struct evoMin_Interface* interface) {
 	interface->lastRcvdByte = 0;
 	interface->queuePtrR = 0;
 	interface->queuePtrW = 0;
-	interface->forcedFrame = (struct evoMin_Frame) {};
+	interface->forcedFrame = (struct evoMin_Frame) { 0 };
 #ifndef EVOMIN_TX_DISABLE
 	interface->evoMin_Handler_TX = 0;
 #endif
@@ -351,7 +351,7 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 		if(!interface->forcedFrame.isInitialized) {
 			memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
 		} else {
-			interface->forcedFrame = (struct evoMin_Frame) {};
+			interface->forcedFrame = (struct evoMin_Frame) { 0 };
 		}
 
 		if(interface->queuePtrR + 1 == interface->queuePtrW) {
