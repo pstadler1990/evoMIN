@@ -378,6 +378,9 @@ evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Fr
 		evoMin_SendResendLastFrame(interface);
 		/* Interrupt should be called meanwhile to set isSent,
 		   otherwise the frame will get discarded after n retries */
+		if(!interface->forcedFrame.retriesLeft) {
+			return 0;
+		}
 	}
 	return 1;
 }
