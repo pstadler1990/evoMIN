@@ -2,8 +2,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include "evomin.h"
-#include "evoMIN_tx_impl.h"
-#include "testdata.h"
+#include "evoMIN_impl.h"
 
 struct evoMin_Interface comInterface;
 
