@@ -30,7 +30,7 @@ You can define the retry count through `EVOMIN_SEND_RETRIES_ON_FAIL` (evoMIN_spe
 ```
 struct evoMin_Frame sendFrame;
 // ... allocate payload
-evoMin_createFrame(&sendFrame, command, payload, payloadLength);
+evoMin_CreateFrame(&sendFrame, command, payload, payloadLength);
 evoMin_QueueFrame(&evoMinInterface, &sendFrame);
 ```
 Main loop (or timer IRQ, etc.)
