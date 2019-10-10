@@ -77,13 +77,10 @@ struct evoMin_Frame {
 	uint8_t isValid;
 	uint8_t isSent;
 	uint8_t command;
-
 	struct evoMin_Buffer buffer;
 	uint8_t pLength;
 	uint8_t crc8;
-
 	uint32_t timestamp;
-	
 	uint32_t retriesLeft;
 };
 
@@ -104,6 +101,11 @@ struct evoMin_Interface {
 	struct evoMin_Frame forcedFrame;
 
 	uint8_t state;
+
+#ifdef IS_SYNCHRONOUS_MODE
+	/* If a synchronous communication (like SPI) is selected, we need a separate reply buffer */
+	struct evoMin_Buffer replyBuffer;
+#endif
 
 	/* Interface from the hardware low-level, must be implemented if you require sending data */
 #ifndef EVOMIN_TX_DISABLE

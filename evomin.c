@@ -54,6 +54,10 @@ evoMin_Init(struct evoMin_Interface* interface) {
 #ifndef EVOMIN_TX_DISABLE
 	interface->evoMin_Handler_TX = 0;
 #endif
+
+#ifdef IS_SYNCHRONOUS_MODE
+	buffer_initialize(&interface->replyBuffer);
+#endif
 	interface->currentFrame = &interface->receivedFrames[interface->currentFrameOffset];
 	initialize_frame(interface->currentFrame);
 	
@@ -496,11 +500,16 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 	   send additional receiver_answer_bytes to allow the receiver to reply */
 	if(receiver_transmission_ack == EVOMIN_FRAME_ACK) {
 		uint8_t r_cnt = 0;
-		uint8_t r_buf[EVOMIN_MAX_PAYLOAD_SIZE];
+
+		buffer_initialize(&interface->replyBuffer);
 		while (r_cnt++ <= receiver_answer_bytes) {
-			r_buf[r_cnt] = interface->evoMin_Handler_TX(EVOMIN_FRAME_DUMMY);
+			/* This overwrites the previously stored bytes */
+			uint8_t received_byte = interface->evoMin_Handler_TX(EVOMIN_FRAME_DUMMY);
+			buffer_push(&interface->replyBuffer, received_byte);
 		}
-		/* Receiver answer bytes are now in r_buf */
+		/* Receiver answer bytes are now in the replyBuffer */
+
+		// TODO: Inform user about the reply bytes!
 	}
 
 	/* Finalize communication */
@@ -517,7 +526,8 @@ static uint8_t
 buffer_initialize(struct evoMin_Buffer* buffer) {
 	buffer->headOffset = 0;
 	buffer->tailOffset = 0;
-	buffer->size = EVOMIN_P_BUF_SIZE + 2;
+	buffer->size = EVOMIN_BUFFER_SIZE;
+	memset(buffer, 0, buffer->size * sizeof(uint8_t));
 	buffer->status = EVOMIN_BUF_STATUS_MASK_INIT;
 	return 1;
 }
