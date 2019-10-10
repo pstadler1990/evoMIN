@@ -26,6 +26,7 @@ enum {
 	EVOMIN_STATE_CRC,
 	EVOMIN_STATE_CRC_FAIL,
 	EVOMIN_STATE_EOF,
+	EVOMIN_STATE_REPLY,
 	EVOMIN_STATE_MSG_SENT_WAIT_FOR_ACK,
 	EVOMIN_STATE_ERROR
 };
@@ -205,6 +206,8 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 
 			/* We've copied all payload data into the pBuffer */
 			if (interface->currentFrameBytesReceived == interface->currentFrame->pLength) {
+				/* v3 new: external callback */
+				evoMin_Handler_FrameRecvd(interface->currentFrame);		// TODO: let evoMin_Handler_FrameRecvd(..) return the number of answer bytes and store them
 				interface->state = EVOMIN_STATE_CRC;
 			}
 			break;
@@ -218,10 +221,12 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 				interface->state = EVOMIN_STATE_EOF;
 
 				/* Send ACK byte to acknowledge reception of message (pre-fill TX buffer to be ready at the EOF byte) */
-				interface->evoMin_Handler_TX(EVOMIN_FRAME_ACK);
+				interface->evoMin_Handler_TX(EVOMIN_FRAME_ACK);	// gets send on first eof byte ?
 
 			} else {
+				/* Send NACK byte to cancel any further sender communication */
 				interface->currentFrame->isValid = 0;
+				interface->evoMin_Handler_TX(EVOMIN_FRAME_NACK);
 				interface->state = EVOMIN_STATE_CRC_FAIL;
 			}
 			break;
@@ -235,12 +240,22 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 				interface->state = (interface->currentFrame->isValid) ? EVOMIN_STATE_IDLE : EVOMIN_STATE_ERROR;
 				interface->currentFrameOffset = (interface->currentFrameOffset+1) % EVOMIN_MAX_FRAMES;
 
-				/* external callback */
-				evoMin_Handler_FrameRecvd(interface->currentFrame);
+				/* Send number of reply bytes */
+				// TODO: interface->evoMin_Handler_TX( stored_answer_bytes_len );		// gets send on second eof
+
+				interface->state = EVOMIN_STATE_REPLY;
 			} else {
 				resultState = CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SOF, prio_Low);
 				goto error;
 			}
+			break;
+
+		case EVOMIN_STATE_REPLY:
+			// TODO: Send reply bytes
+			// if send_bytes < stored_answer_bytes_len
+			// TODO: interface->evoMin_Handler_TX( answer_byte_n );
+			// finish:
+			interface->state = EVOMIN_STATE_IDLE;
 			break;
 
 		case EVOMIN_STATE_ERROR:
