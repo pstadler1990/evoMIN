@@ -5,7 +5,7 @@
 #include <time.h>
 
 static const uint8_t spi_mock_bytes = {
-
+	0x00
 };
 uint32_t spi_mock_index = 0;
 

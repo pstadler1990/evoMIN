@@ -51,7 +51,7 @@
 #include "evoMIN_specific.h"
 #include "evoErrorHandler.h"
 
-#define EVOMIN_FRAME_SIZE 				(uint32_t)7	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 1 eof byte */
+#define EVOMIN_FRAME_SIZE 				(uint32_t)8	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 2 eof bytes */
 /* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
 #define EVOMIN_MAX_FRAMES				(uint32_t)4
 

@@ -2,12 +2,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "evomin.h"
-#include "evoErrorHandler.h"
 #include "ErrorHandler_EvoMIN.h"
 #include "evoMIN_impl.h"
 
 enum {
-	EVOMIN_FRAME_SOF = 0xAA, EVOMIN_FRAME_EOF = 0x55, EVOMIN_FRAME_STFBYT = 0x55, EVOMIN_FRAME_ACK = 0xFF
+	EVOMIN_FRAME_SOF = 0xAA,
+	EVOMIN_FRAME_EOF = 0x55,
+	EVOMIN_FRAME_STFBYT = 0x55,
+	EVOMIN_FRAME_ACK = 0xFF,
+	EVOMIN_FRAME_NACK = 0xFE,
+	EVOMIN_FRAME_DUMMY = 0xF0
 };
 
 enum {
@@ -46,7 +50,7 @@ evoMin_Init(struct evoMin_Interface* interface) {
 	interface->queuePtrR = 0;
 	interface->currentFrameOffset = 0;
 	interface->lastByteWasSTFBYT = -1;
-	interface->forcedFrame = (struct evoMin_Frame) { 0 };
+	interface->forcedFrame = (struct evoMin_Frame) {};
 #ifndef EVOMIN_TX_DISABLE
 	interface->evoMin_Handler_TX = 0;
 #endif
@@ -67,7 +71,7 @@ evoMin_DeInit(struct evoMin_Interface* interface) {
 	interface->lastRcvdByte = 0;
 	interface->queuePtrR = 0;
 	interface->queuePtrW = 0;
-	interface->forcedFrame = (struct evoMin_Frame) { 0 };
+	interface->forcedFrame = (struct evoMin_Frame) {};
 #ifndef EVOMIN_TX_DISABLE
 	interface->evoMin_Handler_TX = 0;
 #endif
@@ -351,7 +355,7 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 		if(!interface->forcedFrame.isInitialized) {
 			memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
 		} else {
-			interface->forcedFrame = (struct evoMin_Frame) { 0 };
+			interface->forcedFrame = (struct evoMin_Frame) {};
 		}
 
 		if(interface->queuePtrR + 1 == interface->queuePtrW) {
@@ -478,8 +482,32 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 
 	interface->evoMin_Handler_TX(frame->crc8);
 
-	/* SEND EOF byte */
+#ifdef IS_SYNCHRONOUS_MODE
+
+	/* Send first EOF byte
+	   Receiver replies with number of answer bytes
+	   (or 0x00 if no answer bytes or *nothing* in case of asynchronous communication, like UART) */
+	uint8_t receiver_answer_bytes = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
+
+	/* Send second EOF byte
+	   Receiver replies with ACK (valid frame) or NACK (invalid frame) */
+	uint8_t receiver_transmission_ack = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
+
+	/* If the previous transmission has been successful (i.e. valid CRC),
+	   send additional receiver_answer_bytes to allow the receiver to reply */
+	if(receiver_transmission_ack == EVOMIN_FRAME_ACK) {
+		uint8_t r_cnt = 0;
+		uint8_t r_buf[EVOMIN_MAX_PAYLOAD_SIZE];
+		while (r_cnt++ <= receiver_answer_bytes) {
+			r_buf[r_cnt] = interface->evoMin_Handler_TX(EVOMIN_FRAME_DUMMY);
+		}
+		/* Receiver answer bytes are now in r_buf */
+	}
+
+	/* Finalize communication */
 	interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
+
+#endif
 
 	/* Set internal state to wait for the ACK, the reception of ACK happens in the RX handler */
 	interface->state = EVOMIN_STATE_MSG_SENT_WAIT_FOR_ACK;
