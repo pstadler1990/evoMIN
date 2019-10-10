@@ -486,16 +486,16 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 
 	interface->evoMin_Handler_TX(frame->crc8);
 
-	/* Send first EOF byte
+	/* Send first (or only, if not in synchronous mode) EOF byte
 	   Receiver replies with number of answer bytes
 	   (or 0x00 if no answer bytes or *nothing* in case of asynchronous communication, like UART) */
 	uint8_t receiver_answer_bytes = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
 
+#ifdef IS_SYNCHRONOUS_MODE
 	/* Send second EOF byte
 	   Receiver replies with ACK (valid frame) or NACK (invalid frame) */
 	uint8_t receiver_transmission_ack = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
 
-#ifdef IS_SYNCHRONOUS_MODE
 	/* If the previous transmission has been successful (i.e. valid CRC),
 	   send additional receiver_answer_bytes to allow the receiver to reply */
 	if(receiver_transmission_ack == EVOMIN_FRAME_ACK) {
