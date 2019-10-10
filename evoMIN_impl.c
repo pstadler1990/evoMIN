@@ -1,19 +1,23 @@
 #include "evomin.h"
 #include "evoMIN_impl.h"
 #include <stdio.h>
-#include <string.h>
+#include <sys/types.h>
+#include <time.h>
+
+static const uint8_t spi_mock_bytes = {
+
+};
+uint32_t spi_mock_index = 0;
+
 
 uint8_t
-evoMin_CRC8(uint8_t* bytes, uint32_t bLen)
-{
+evoMin_CRC8(uint8_t* bytes, uint32_t bLen) {
 	uint8_t crc = 0x00;
 	uint8_t extract;
 	uint8_t sum;
-	for(uint32_t i=0;i<bLen;i++)
-	{
+	for(uint32_t i=0;i<bLen;i++) {
 		extract = *bytes;
-		for (char tempI = 8; tempI; tempI--)
-		{
+		for (char tempI = 8; tempI; tempI--) {
 			sum = (crc ^ extract) & 0x01;
 			crc >>= 1;
 			if (sum)
@@ -25,27 +29,28 @@ evoMin_CRC8(uint8_t* bytes, uint32_t bLen)
 	return crc;
 }
 
+uint8_t
+evoMin_Handler_TX(uint8_t byte) {
+	printf("Send TX byte: \t%X\n", byte);
+
+	// SPI mock
+	printf("\t\t\t< Received byte: \t%X\n", 0x12);
+
+	return 0;
+}
+
 uint32_t
 evoMin_GetTimeNow(void) {
-	/* Return an integer representation of a suitable time component,
-	   the time is required for timestamp calculations for resending enqueued frames */
-	// TODO: Replace with real system time (on embedded systems, this could be the Upcounter)
 	time_t now = time(0);
 	return (uint32_t) now;
 }
 
-uint8_t 
-evoMin_Handler_Send(uint8_t byte) {
-	// TODO: Fill TX buffer to be send via SPI
-	(void) byte;
-	return 0;
-}
-
-
 void
 evoMin_Handler_FrameRecvd(struct evoMin_Frame* frame) {
-	// TODO: Implement real FrameRecvd handler
-	printf("\nFrame received!\n");
-	printf("Command: %d\n", frame->command);
-	printf("Len: %d\n", frame->pLength);
+	/* Received a valid evoMIN frame over SPI */
+	char rBuf[EVOMIN_BUFFER_SIZE];
+	for(uint8_t bCnt = 0; bCnt < frame->pLength && bCnt < EVOMIN_BUFFER_SIZE; bCnt++) {
+		rBuf[bCnt] = evoMin_FrameGetDataByte(frame, bCnt);
+	}
+	/* Received bytes are in rBuf */
 }
