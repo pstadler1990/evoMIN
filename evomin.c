@@ -502,7 +502,7 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 		uint8_t r_cnt = 0;
 
 		buffer_initialize(&interface->replyBuffer);
-		while (r_cnt++ <= receiver_answer_bytes) {
+		while (r_cnt++ < receiver_answer_bytes) {
 			/* This overwrites the previously stored bytes */
 			uint8_t received_byte = interface->evoMin_Handler_TX(EVOMIN_FRAME_DUMMY);
 			buffer_push(&interface->replyBuffer, received_byte);
