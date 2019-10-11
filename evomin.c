@@ -522,6 +522,7 @@ send_frame(struct evoMin_Interface *interface, struct evoMin_Frame *frame) {
 	if(receiver_transmission_ack == EVOMIN_FRAME_ACK) {
 		/* Send second EOF byte
 	       Receiver replies with ACK (valid frame) or NACK (invalid frame) */
+		frame->isSent = 1;	// acknowledge frame is sent
 		uint8_t receiver_answer_bytes = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
 
 		uint8_t r_cnt = 0;
