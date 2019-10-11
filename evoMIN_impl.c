@@ -35,6 +35,17 @@ evoMin_GetTimeNow(void) {
 	return (uint32_t) now;
 }
 
+#ifdef IS_SYNCHRONOUS_MODE
+void
+evoMin_RXTXHandler(struct evoMin_Interface* interface, uint8_t byteOut) {
+	// Master
+	while(!(SPI->CR & TXE));
+	interface->evoMin_Handler_TX(byteOut);
+	while(!(SPI->CFR & RXNE));
+	evoMin_RXHandler(interface, (uint8_t)SPI->DR);
+}
+#endif
+
 uint8_t
 evoMin_Handler_FrameRecvd(struct evoMin_Frame *frame, uint8_t* answerBuffer, uint32_t answerBufferSize) {
 	/* Received a valid evoMIN frame over SPI */

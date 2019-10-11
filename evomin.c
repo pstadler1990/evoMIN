@@ -59,7 +59,6 @@ evoMin_Init(struct evoMin_Interface* interface) {
 
 	interface->currentFrame = &interface->receivedFrames[interface->currentFrameOffset];
 	initialize_frame(interface->currentFrame);
-	
 	interface->state = EVOMIN_STATE_IDLE;
 }
 
@@ -246,7 +245,7 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 				if(interface->currentFrame->isValid) {
 #ifdef IS_SYNCHRONOUS_MODE
 					/* Send number of reply bytes */
-					interface->evoMin_Handler_TX(interface->currentFrame->answerBuffer.headOffset);		// gets send on second eof	// TODO: Fix buffer?
+					interface->evoMin_Handler_TX((uint8_t)interface->currentFrame->answerBuffer.headOffset);		// gets send on second eof	// TODO: Fix buffer?
 					interface->state = EVOMIN_STATE_REPLY;
 #else
 					interface->state = (interface->currentFrame->answerBuffer.headOffset > 0) ? EVOMIN_STATE_REPLY_CREATEFRAME : EVOMIN_STATE_IDLE;
@@ -435,7 +434,9 @@ initialize_frame(struct evoMin_Frame* frame) {
 	frame->retriesLeft = EVOMIN_SEND_RETRIES_ON_FAIL;
 	frame->crc8 = 0;
 	buffer_initialize(&frame->answerBuffer);
+#ifndef IS_SYNCHRONOUS_MODE
 	buffer_initialize(&frame->replyBuffer);
+#endif
 	frame->isInitialized = buffer_initialize(&frame->buffer);
 }
 

@@ -131,4 +131,9 @@ uint8_t evoMin_CRC8(uint8_t* bytes, uint32_t bLen);
  in a buffer */
 uint8_t evoMin_Handler_FrameRecvd(struct evoMin_Frame *frame, uint8_t* answerBuffer, uint32_t answerBufferSize);
 
+/* RXTX handler for mixed receive / sending on synchronous communication, i.e. SPI */
+#ifdef IS_SYNCHRONOUS_MODE
+void evoMin_RXTXHandler(struct evoMin_Interface* interface, uint8_t byteOut);
+#endif
+
 #endif
