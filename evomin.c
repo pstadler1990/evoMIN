@@ -540,10 +540,10 @@ send_frame(struct evoMin_Interface *interface, struct evoMin_Frame *frame) {
 	}
 
 	return 0;
-#endif
-
+#else
 	/* Set internal state to wait for the ACK, the reception of ACK happens in the RX handler */
 	interface->state = EVOMIN_STATE_MSG_SENT_WAIT_FOR_ACK;
+#endif
 	return 1;
 }
 #endif
