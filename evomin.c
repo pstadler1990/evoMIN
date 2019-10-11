@@ -242,18 +242,19 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 		case EVOMIN_STATE_EOF:
 			if (cByte == EVOMIN_FRAME_EOF) {
 				interface->currentFrameOffset = (interface->currentFrameOffset+1) % EVOMIN_MAX_FRAMES;
-#ifdef IS_SYNCHRONOUS_MODE
-				/* Send number of reply bytes */
-				interface->evoMin_Handler_TX(interface->currentFrame->answerBuffer.headOffset);		// gets send on second eof	// TODO: Fix buffer?
-				interface->state = EVOMIN_STATE_REPLY;
-#else
+
 				if(interface->currentFrame->isValid) {
+#ifdef IS_SYNCHRONOUS_MODE
+					/* Send number of reply bytes */
+					interface->evoMin_Handler_TX(interface->currentFrame->answerBuffer.headOffset);		// gets send on second eof	// TODO: Fix buffer?
+					interface->state = EVOMIN_STATE_REPLY;
+#else
 					interface->state = (interface->currentFrame->answerBuffer.headOffset > 0) ? EVOMIN_STATE_REPLY_CREATEFRAME : EVOMIN_STATE_IDLE;
 					interface->currentFrame->answerBuffer.headOffset = evoMin_Handler_FrameRecvd(interface->currentFrame);
+#endif
 				} else {
 					interface->state = EVOMIN_STATE_ERROR;
 				}
-#endif
 			} else {
 				resultState = CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SOF, prio_Low);
 				goto error;
@@ -534,18 +535,17 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 	/* Send first (or only, if not in synchronous mode) EOF byte
 	   Receiver replies with number of answer bytes
 	   (or 0x00 if no answer bytes or *nothing* in case of asynchronous communication, like UART) */
-	uint8_t receiver_answer_bytes = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
-
-#ifdef IS_SYNCHRONOUS_MODE
-	/* Send second EOF byte
-	   Receiver replies with ACK (valid frame) or NACK (invalid frame) */
 	uint8_t receiver_transmission_ack = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
 
+#ifdef IS_SYNCHRONOUS_MODE
 	/* If the previous transmission has been successful (i.e. valid CRC),
 	   send additional receiver_answer_bytes to allow the receiver to reply */
 	if(receiver_transmission_ack == EVOMIN_FRAME_ACK) {
-		uint8_t r_cnt = 0;
+		/* Send second EOF byte
+	       Receiver replies with ACK (valid frame) or NACK (invalid frame) */
+		uint8_t receiver_answer_bytes = interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
 
+		uint8_t r_cnt = 0;
 		buffer_initialize(&frame->replyBuffer);
 		while (r_cnt++ < receiver_answer_bytes) {
 			/* This overwrites the previously stored bytes */
