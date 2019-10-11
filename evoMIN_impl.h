@@ -1,9 +1,9 @@
-#ifndef EVOMIN_IMPL_H
-#define EVOMIN_IMPL_H
+#ifndef EVOMIN_TX_IMPL_H
+#define EVOMIN_TX_IMPL_H
 
 uint8_t evoMin_CRC8(uint8_t* bytes, uint32_t bLen);
+uint8_t evoMin_Handler_TX(uint8_t byte);
 uint32_t evoMin_GetTimeNow(void);
-uint8_t evoMin_Handler_Send(uint8_t byte);
-void evoMin_Handler_FrameRecvd(struct evoMin_Frame* frame);
+uint8_t evoMin_Handler_FrameRecvd(struct evoMin_Frame *frame, uint8_t* answerBuffer, uint32_t answerBufferSize);
 
-#endif //EVOMIN_IMPL_H
+#endif //EVOMIN_TX_IMPL_H

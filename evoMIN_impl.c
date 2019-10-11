@@ -45,12 +45,24 @@ evoMin_GetTimeNow(void) {
 	return (uint32_t) now;
 }
 
-void
-evoMin_Handler_FrameRecvd(struct evoMin_Frame* frame) {
+uint8_t
+evoMin_Handler_FrameRecvd(struct evoMin_Frame *frame, uint8_t* answerBuffer, uint32_t answerBufferSize) {
 	/* Received a valid evoMIN frame over SPI */
 	char rBuf[EVOMIN_BUFFER_SIZE];
 	for(uint8_t bCnt = 0; bCnt < frame->pLength && bCnt < EVOMIN_BUFFER_SIZE; bCnt++) {
 		rBuf[bCnt] = evoMin_FrameGetDataByte(frame, bCnt);
 	}
 	/* Received bytes are in rBuf */
+
+	// Prepare answer (if any)
+	if(answerBufferSize >= 4) {
+		answerBuffer[0] = 0xDE;
+		answerBuffer[1] = 0xAD;
+		answerBuffer[2] = 0xBE;
+		answerBuffer[3] = 0xEF;
+
+		return 4;
+	} else {
+		return 0;
+	}
 }

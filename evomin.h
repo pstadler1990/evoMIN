@@ -82,31 +82,25 @@ struct evoMin_Frame {
 	uint8_t crc8;
 	uint32_t timestamp;
 	uint32_t retriesLeft;
+	struct evoMin_Buffer answerBuffer;
+#ifdef IS_SYNCHRONOUS_MODE
+	/* If a synchronous communication (like SPI) is selected, we need a separate reply buffer */
+	struct evoMin_Buffer replyBuffer;
+#endif
 };
 
 struct evoMin_Interface {
-
 	struct evoMin_Frame queue[EVOMIN_MAX_FRAMES];
 	uint32_t queuePtrW;
 	uint32_t queuePtrR;
 	struct evoMin_Frame* currentFrame;
 	struct evoMin_Frame receivedFrames[EVOMIN_MAX_FRAMES];
-
 	uint32_t currentFrameOffset;
-
 	uint8_t currentFrameBytesReceived;
 	uint8_t lastRcvdByte;
 	int8_t 	lastByteWasSTFBYT;
-
 	struct evoMin_Frame forcedFrame;
-
 	uint8_t state;
-
-#ifdef IS_SYNCHRONOUS_MODE
-	/* If a synchronous communication (like SPI) is selected, we need a separate reply buffer */
-	struct evoMin_Buffer replyBuffer;
-#endif
-
 	/* Interface from the hardware low-level, must be implemented if you require sending data */
 #ifndef EVOMIN_TX_DISABLE
 	uint8_t (*evoMin_Handler_TX)(uint8_t byte);
@@ -135,6 +129,6 @@ uint8_t evoMin_CRC8(uint8_t* bytes, uint32_t bLen);
 /* evoMin_Handler_FrameRecvd callback gets called by evoMIN whenever a new, valid frame has been received
  It contains a pointer to the received frame, including the command, it's payload length and the payload itself
  in a buffer */
-void evoMin_Handler_FrameRecvd(struct evoMin_Frame* frame);
+uint8_t evoMin_Handler_FrameRecvd(struct evoMin_Frame *frame, uint8_t* answerBuffer, uint32_t answerBufferSize);
 
 #endif
