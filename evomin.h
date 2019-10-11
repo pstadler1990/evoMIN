@@ -49,7 +49,7 @@
 #define __EVOMIN_H_
 
 #include "evoMIN_specific.h"
-#include "evoErrorHandler.h"
+#include <stdint.h>
 
 #define EVOMIN_FRAME_SIZE 				(uint32_t)8	/* 3 sof bytes, 1 cmd byte, 1 length byte, 1 crc byte, 2 eof bytes */
 /* number of frames to hold, after EVOMIN_MAX_FRAMES frames the frames are overwritten */
@@ -112,7 +112,7 @@ void evoMin_DeInit(struct evoMin_Interface* interface);
 void evoMin_SetTXHandler(struct evoMin_Interface* interface, uint8_t (*evoMin_Handler_TX)(uint8_t byte));
 void evoMin_InitializeFrame(struct evoMin_Frame* frame);
 uint8_t evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, uint8_t bLength);
-ResultState_t evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame frame);
+int8_t evoMin_QueueFrame(struct evoMin_Interface *interface, struct evoMin_Frame frame);
 uint8_t evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame frame);
 void evoMin_SendResendLastFrame(struct evoMin_Interface* interface);
 uint8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
@@ -121,7 +121,7 @@ uint8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
 
 /* evoMin_RXHandler must be called through the low-level byte receive method, i.e. the SPI RX IRQHandler
  whenever a byte is received on the line */
-ResultState_t evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte);
+int8_t evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte);
 
 /* Application dependent CRC8 calculation, must be implemented! */
 uint8_t evoMin_CRC8(uint8_t* bytes, uint32_t bLen);

@@ -38,11 +38,7 @@ evoMin_GetTimeNow(void) {
 #ifdef IS_SYNCHRONOUS_MODE
 void
 evoMin_RXTXHandler(struct evoMin_Interface* interface, uint8_t byteOut) {
-	// Master
-	while(!(SPI->CR & TXE));
-	interface->evoMin_Handler_TX(byteOut);
-	while(!(SPI->CFR & RXNE));
-	evoMin_RXHandler(interface, (uint8_t)SPI->DR);
+	// TODO: Define combined RX/TX handler (use as wrapper for dedicated RX- / TX handlers)
 }
 #endif
 

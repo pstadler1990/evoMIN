@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "evomin.h"
-#include "ErrorHandler_EvoMIN.h"
 #include "evoMIN_impl.h"
 
 enum {
@@ -34,7 +33,7 @@ enum {
 
 static void initialize_frame(struct evoMin_Frame* frame);
 #ifndef EVOMIN_TX_DISABLE
-ResultState_t send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame);
+int8_t send_frame(struct evoMin_Interface *interface, struct evoMin_Frame *frame);
 #endif
 static uint8_t buffer_initialize(struct evoMin_Buffer* buffer);
 static uint8_t buffer_push(struct evoMin_Buffer* buffer, uint8_t byte);
@@ -92,11 +91,9 @@ evoMin_SetTXHandler(struct evoMin_Interface* interface, uint8_t (*evoMin_Handler
 }
 #endif
 
-ResultState_t 
-evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
+int8_t
+evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte) {
 	/* The handler to be called from the low-level hardware receive interrupt, i.e. SPI_RX_IrQ */
-	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN, prio_None);
-
 	int8_t copyState;
 	int8_t curSendByte;
 
@@ -125,7 +122,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			if (cByte == EVOMIN_FRAME_SOF) {
 				interface->state = EVOMIN_STATE_SOF;
 			} else {
-				CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_SOF, prio_Low);
 				goto error;
 			}
 			break;
@@ -134,7 +130,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			if (cByte == EVOMIN_FRAME_SOF) {
 				interface->state = EVOMIN_STATE_SOF2;
 			} else {
-				resultState = CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_SOF, prio_Low);
 				goto error;
 			}
 			break;
@@ -143,7 +138,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			if (cByte == EVOMIN_FRAME_SOF) {
 				interface->state = EVOMIN_STATE_CMD;
 			} else {
-				resultState = CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_SOF, prio_Low);
 				goto error;
 			}
 			break;
@@ -167,7 +161,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 
 			if (interface->currentFrame->pLength > EVOMIN_MAX_PAYLOAD_SIZE) {
 				interface->currentFrame->buffer.status |= EVOMIN_BUF_STATUS_MASK_PTL;
-				resultState = CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_LEN, prio_Low);
 				goto error;
 			}
 
@@ -186,7 +179,7 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			if (interface->lastByteWasSTFBYT == 1) {
 				interface->lastByteWasSTFBYT = -1;
 				interface->lastRcvdByte = EVOMIN_FRAME_STFBYT;
-				return resultState;
+				return 0;
 			}
 			if (cByte == EVOMIN_FRAME_SOF && interface->lastRcvdByte == EVOMIN_FRAME_SOF) {
 				interface->lastByteWasSTFBYT = 1;
@@ -199,7 +192,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 
 				if (!copyState) {
 					/* Could not copy the whole payload into the pBuffer, FAIL */
-					resultState = CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_PAYLD, prio_Low);
 					goto error;
 				}
 			}
@@ -235,7 +227,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			break;
 
 		case EVOMIN_STATE_CRC_FAIL:
-			resultState = CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_CRC, prio_Low);
 			goto error;
 
 		case EVOMIN_STATE_EOF:
@@ -255,7 +246,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 					interface->state = EVOMIN_STATE_ERROR;
 				}
 			} else {
-				resultState = CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SOF, prio_Low);
 				goto error;
 			}
 			break;
@@ -274,7 +264,6 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 			break;
 
 		case EVOMIN_STATE_ERROR:
-			resultState = CreateResultState(type_Unknown, src_evoMIN, prio_Low);
 			goto error;
 
 		default:
@@ -282,12 +271,12 @@ evoMin_RXHandler(struct evoMin_Interface* interface, uint8_t cByte) {
 	}
 
 	interface->lastRcvdByte = cByte;
-	return resultState;
+	return 1;
 
 	error: 
 		interface->currentFrame->isValid = 0;
 		interface->state = EVOMIN_STATE_IDLE;
-		return resultState;
+		return -1;
 }
 
 uint8_t 
@@ -330,13 +319,12 @@ evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t* bytes, 
 	return bytesToSend;
 }
 
-ResultState_t
-evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame frame) {
-	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN + src_evoMIN_QUEUEFRAME, prio_None);
-
+int8_t
+evoMin_QueueFrame(struct evoMin_Interface *interface, struct evoMin_Frame frame) {
+	/* Enqueues a frame to be send as soon as the device and communication interface is ready */
 	if(interface->queuePtrW + 1 > EVOMIN_MAX_FRAMES) {
 		/* Cannot queue the frame as we're already full */
-		return CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_QUEUEFRAME, prio_Low);
+		return -1;
 	}
 
 	frame.timestamp = evoMin_GetTimeNow();
@@ -344,7 +332,7 @@ evoMin_QueueFrame(struct evoMin_Interface* interface, struct evoMin_Frame frame)
 	interface->queue[interface->queuePtrW] = frame;
 	interface->queuePtrW++;
 
-	return resultState;
+	return 1;
 }
 
 void
@@ -384,7 +372,7 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 		/* No more retries or frame already sent, dequeue frame (discard) */
 		if(!frame->isSent) {
 			/* ERROR, frame couldn't be sent */
-			CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SENDFRAME_RETRY, prio_Low);
+			return;
 		}
 		if(!interface->forcedFrame.isInitialized) {
 			memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
@@ -441,10 +429,9 @@ initialize_frame(struct evoMin_Frame* frame) {
 }
 
 #ifndef EVOMIN_TX_DISABLE
-ResultState_t
-send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
+int8_t
+send_frame(struct evoMin_Interface *interface, struct evoMin_Frame *frame) {
 	/* Sends a previously created frame via the low-level implementation of the evoMin_Handler_TX callback */
-	ResultState_t resultState = CreateResultState(type_NoError, src_evoMIN + src_evoMIN_SENDFRAME, prio_None);
 
 	uint32_t bytesSent = EVOMIN_FRAME_SIZE;	 /* Start with frame size of bytes and increase for each additional byte */
 	uint8_t nextByte = 0;
@@ -470,7 +457,7 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 	if(!frame->isValid) {
 		crcBuffer = calloc(crcBufSize, sizeof(uint8_t));
 		if(!crcBuffer) {
-			return CreateResultState(type_OutOfBounds, src_evoMIN + src_evoMIN_SENDFRAME_BUF_ALLOC, prio_High);
+			return -1;
 		}
 		crcBuffer[0] = frame->command;
 		crcBuffer[1] = bytesToSend;
@@ -542,15 +529,22 @@ send_frame(struct evoMin_Interface* interface, struct evoMin_Frame* frame) {
 		}
 		/* Receiver answer bytes are now in the replyBuffer */
 		evoMin_Handler_FrameRecvd(frame, NULL, 0);
+
+		/* Finalize communication */
+		interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
+		return 1;
+	} else {
+		/* Finalize communication */
+		interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
+		return -1;
 	}
-	/* Finalize communication */
-	interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
-	return resultState;
+
+	return 0;
 #endif
 
 	/* Set internal state to wait for the ACK, the reception of ACK happens in the RX handler */
 	interface->state = EVOMIN_STATE_MSG_SENT_WAIT_FOR_ACK;
-	return resultState;
+	return 1;
 }
 #endif
 
