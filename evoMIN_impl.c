@@ -4,12 +4,6 @@
 #include <sys/types.h>
 #include <time.h>
 
-static const uint8_t spi_mock_bytes = {
-	0x00
-};
-uint32_t spi_mock_index = 0;
-
-
 uint8_t
 evoMin_CRC8(uint8_t* bytes, uint32_t bLen) {
 	uint8_t crc = 0x00;
@@ -32,10 +26,6 @@ evoMin_CRC8(uint8_t* bytes, uint32_t bLen) {
 uint8_t
 evoMin_Handler_TX(uint8_t byte) {
 	printf("Send TX byte: \t%X\n", byte);
-
-	// SPI mock
-	printf("\t\t\t< Received byte: \t%X\n", 0x12);
-
 	return 0;
 }
 
@@ -48,6 +38,8 @@ evoMin_GetTimeNow(void) {
 uint8_t
 evoMin_Handler_FrameRecvd(struct evoMin_Frame *frame, uint8_t* answerBuffer, uint32_t answerBufferSize) {
 	/* Received a valid evoMIN frame over SPI */
+	printf("Frame received!\n");
+
 	char rBuf[EVOMIN_BUFFER_SIZE];
 	for(uint8_t bCnt = 0; bCnt < frame->pLength && bCnt < EVOMIN_BUFFER_SIZE; bCnt++) {
 		rBuf[bCnt] = evoMin_FrameGetDataByte(frame, bCnt);
