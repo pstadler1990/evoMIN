@@ -303,19 +303,6 @@ evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n) {
 	return byte;
 }
 
-int8_t
-buffer_pop_first(struct evoMin_Buffer* buffer) {
-	/* Pops the first element, sets tailOffset */
-	uint8_t byte = buffer->buffer[0];
-	if((buffer->tailOffset + 1 <= buffer->headOffset)
-		&& (buffer->tailOffset + 1 < buffer->size)) {
-		buffer->tailOffset++;
-	} else {
-		return -1;
-	}
-	return byte;
-}
-
 /* Creates a frame to be sent over the low-level transport layer from a command, a byte buffer and its length
  returns the number of sent bytes */
 uint8_t 
@@ -586,6 +573,19 @@ buffer_push(struct evoMin_Buffer* buffer, uint8_t byte) {
 
 	buffer->buffer[buffer->tailOffset++] = byte;
 	return 1;
+}
+
+int8_t
+buffer_pop_first(struct evoMin_Buffer* buffer) {
+	/* Pops the first element, sets tailOffset */
+	uint8_t byte = buffer->buffer[0];
+	if((buffer->tailOffset + 1 <= buffer->headOffset)
+	   && (buffer->tailOffset + 1 < buffer->size)) {
+		buffer->tailOffset++;
+	} else {
+		return -1;
+	}
+	return byte;
 }
 
 static struct evoMin_Frame*
