@@ -239,6 +239,7 @@ evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte) {
 					interface->evoMin_Handler_TX((uint8_t)interface->currentFrame->answerBuffer.headOffset);		// gets send on second eof	// TODO: Fix buffer?
 					interface->state = EVOMIN_STATE_REPLY;
 #else
+					interface->evoMin_Handler_TX(EVOMIN_FRAME_ACK);
 					interface->state = (interface->currentFrame->answerBuffer.headOffset > 0) ? EVOMIN_STATE_REPLY_CREATEFRAME : EVOMIN_STATE_IDLE;
 					interface->currentFrame->answerBuffer.headOffset = evoMin_Handler_FrameRecvd(interface->currentFrame);
 #endif
@@ -264,6 +265,9 @@ evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte) {
 			break;
 
 		case EVOMIN_STATE_ERROR:
+#ifndef IS_SYNCHRONOUS_MODE
+			interface->evoMin_Handler_TX(EVOMIN_FRAME_NACK);
+#endif
 			goto error;
 
 		default:
