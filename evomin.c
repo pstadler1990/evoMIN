@@ -374,10 +374,6 @@ evoMin_SendResendLastFrame(struct evoMin_Interface* interface) {
 		frame->retriesLeft--;
 	} else {
 		/* No more retries or frame already sent, dequeue frame (discard) */
-		if(!frame->isSent) {
-			/* ERROR, frame couldn't be sent */
-			return;
-		}
 		if(!interface->forcedFrame.isInitialized) {
 			memset(&interface->queue[interface->queuePtrR], 0, sizeof(struct evoMin_Frame));
 		} else {
