@@ -113,7 +113,6 @@ evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte) {
 				}
 				interface->state = EVOMIN_STATE_IDLE;
 			} else {
-				CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_ACK, prio_Low);
 				goto error;
 			}
 			break;
