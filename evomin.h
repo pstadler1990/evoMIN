@@ -115,7 +115,7 @@ uint8_t evoMin_CreateFrame(struct evoMin_Frame* frame, uint8_t command, uint8_t*
 int8_t evoMin_QueueFrame(struct evoMin_Interface *interface, struct evoMin_Frame frame);
 uint8_t evoMin_SendFrameImmediately(struct evoMin_Interface* interface, struct evoMin_Frame frame);
 void evoMin_SendResendLastFrame(struct evoMin_Interface* interface);
-uint8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
+int8_t evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n);
 
 /* -- Custom handlers, must be implemented on the application side -- */
 
