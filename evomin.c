@@ -113,6 +113,7 @@ evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte) {
 				}
 				interface->state = EVOMIN_STATE_IDLE;
 			} else {
+				CreateResultState(type_Unknown, src_evoMIN + src_evoMIN_ACK, prio_Low);
 				goto error;
 			}
 			break;
@@ -239,8 +240,8 @@ evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte) {
 					interface->state = EVOMIN_STATE_REPLY;
 #else
 					interface->evoMin_Handler_TX(EVOMIN_FRAME_ACK);
-					evoMin_Handler_FrameRecvd(interface->currentFrame, NULL, 0);
-					interface->state = EVOMIN_STATE_IDLE;
+					interface->state = (interface->currentFrame->answerBuffer.headOffset > 0) ? EVOMIN_STATE_REPLY_CREATEFRAME : EVOMIN_STATE_IDLE;
+					interface->currentFrame->answerBuffer.headOffset = evoMin_Handler_FrameRecvd(interface->currentFrame);
 #endif
 				} else {
 					interface->state = EVOMIN_STATE_ERROR;
@@ -284,7 +285,8 @@ evoMin_RXHandler(struct evoMin_Interface *interface, uint8_t cByte) {
 
 int8_t
 evoMin_FrameGetDataByte(struct evoMin_Frame* frame, uint8_t n) {
-	if(n < frame->buffer.size) {
+	/* Add an offset of 2 to n, as we also store the command and payload length byte in the payload data */
+	if(frame->buffer.headOffset + n < (frame->buffer.size)) {
 		/* No overflow, return byte from buffer offset */
 		return frame->buffer.buffer[n];
 	} else {
@@ -419,7 +421,7 @@ initialize_frame(struct evoMin_Frame* frame) {
 	frame->retriesLeft = EVOMIN_SEND_RETRIES_ON_FAIL;
 	frame->crc8 = 0;
 	buffer_initialize(&frame->answerBuffer);
-#ifdef IS_SYNCHRONOUS_MODE
+#ifndef IS_SYNCHRONOUS_MODE
 	buffer_initialize(&frame->replyBuffer);
 #endif
 	frame->isInitialized = buffer_initialize(&frame->buffer);
@@ -526,7 +528,7 @@ send_frame(struct evoMin_Interface *interface, struct evoMin_Frame *frame) {
 			buffer_push(&frame->replyBuffer, received_byte);
 		}
 		/* Receiver answer bytes are now in the replyBuffer */
-		evoMin_Handler_FrameRecvdevoMin_Handler_FrameRecvd(frame, NULL, 0);
+		evoMin_Handler_FrameRecvd(frame, NULL, 0);
 
 		/* Finalize communication */
 		interface->evoMin_Handler_TX(EVOMIN_FRAME_EOF);
@@ -571,9 +573,10 @@ buffer_push(struct evoMin_Buffer* buffer, uint8_t byte) {
 int8_t
 buffer_pop_first(struct evoMin_Buffer* buffer) {
 	/* Pops the first element, sets tailOffset */
-	uint8_t byte = buffer->buffer[0];
-	if((buffer->tailOffset + 1 <= buffer->headOffset)
+	uint8_t byte = 0x00;
+	if((buffer->tailOffset <= buffer->headOffset)	//instead of tailOffset+1
 	   && (buffer->tailOffset + 1 < buffer->size)) {
+		byte = buffer->buffer[buffer->tailOffset];	//instead of 0
 		buffer->tailOffset++;
 	} else {
 		return -1;
